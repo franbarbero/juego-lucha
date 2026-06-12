@@ -169,11 +169,11 @@ class Fighter {
     if (this.input.down(leftKey)) this.vx = -speed;
     if (this.input.down(rightKey)) this.vx = speed;
 
-    if (this.onGround) {
-      // mirar siempre al oponente, como en los juegos de lucha clásicos
-      this.facing = opponent.x >= this.x ? 1 : -1;
-      this.jumpsUsed = 0;
-    }
+    // mirar hacia donde te mueves (si estás quieto, conservas la dirección)
+    if (this.vx > 0) this.facing = 1;
+    else if (this.vx < 0) this.facing = -1;
+
+    if (this.onGround) this.jumpsUsed = 0;
 
     const jumpPressed = this.input.pressed(c.jump) ||
       (c.jumpAlt && this.input.pressed(c.jumpAlt));

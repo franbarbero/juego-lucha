@@ -72,7 +72,7 @@ const CHARACTERS = [
     special: {
       type: 'shout',
       damage: 14,
-      range: 150,
+      range: 220,
       cooldownFrames: 200
     },
     voice: { base: 620, wave: 'sawtooth' },
