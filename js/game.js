@@ -644,11 +644,11 @@ function drawStage() {
   [[0, 300, 90], [70, 250, 110], [160, 330, 70], [780, 280, 100], [870, 320, 80], [930, 260, 95]]
     .forEach(([x, y, w]) => ctx.fillRect(x, y, w, FLOOR_Y - y + 20));
 
-  // piso
+  // piso (el borde superior coincide con la línea donde pisan los pies)
   ctx.fillStyle = '#292433';
-  ctx.fillRect(0, FLOOR_Y + 10, W, H - FLOOR_Y);
+  ctx.fillRect(0, FLOOR_Y, W, H - FLOOR_Y);
   ctx.fillStyle = '#3f3a4d';
-  ctx.fillRect(0, FLOOR_Y + 10, W, 6);
+  ctx.fillRect(0, FLOOR_Y, W, 6);
 }
 
 function drawHealthBar(f, x, mirrored) {
