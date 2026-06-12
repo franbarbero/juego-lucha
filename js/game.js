@@ -8,6 +8,7 @@
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false; // pixel art nítido al escalar sprites
 const W = canvas.width;
 const H = canvas.height;
 
