@@ -8,6 +8,7 @@
 //
 //  Campos:
 //   name        → nombre que se muestra en pantalla
+//   title       → apodo/título que sale en su carta de selección
 //   color       → color principal del cuerpo (hex), placeholder
 //                 hasta que tengan sprites propios
 //   skinColor   → color de la cabeza
@@ -20,51 +21,61 @@
 //                   range: alcance en píxeles
 //                   cooldownFrames: frames de espera entre golpes (60 = 1 seg)
 //   special     → habilidad característica. Tipos disponibles:
-//                   'dash'       → embestida veloz hacia adelante
-//                   'projectile' → lanza un proyectil
+//                   'projectile' → lanza un proyectil que hace daño
+//                   'strings'    → hilos de titiritero: poco daño, pero
+//                                  invierte los controles del rival
+//                                  durante reverseFrames (60 = 1 seg)
+//                   'shout'      → grito de área frontal: daño y un
+//                                  empujón enorme (alcance = range)
 //   voice       → la "voz" del personaje: cambia cómo suenan sus
 //                 saltos, golpes y gritos. base = tono (grave 120,
 //                 agudo 600). wave: 'square' | 'sawtooth' |
 //                 'triangle' | 'sine'
 //   winPhrase   → frase que dice al ganar
+//
+//  Nota: el dash NO se configura aquí: todos los personajes lo
+//  tienen igual (Shift / Ñ), con su propio cooldown. Es movilidad,
+//  no una estadística.
 // ============================================================
 
 const CHARACTERS = [
   {
-    name: 'RAYO',
-    color: '#3b82f6',
+    name: 'BARBERO',
+    title: 'El Titiritero',
+    color: '#8b5cf6',
     skinColor: '#fcd9b8',
     hairColor: '#27272a',
     maxHealth: 100,
-    speed: 5.5,
-    jumpPower: 16,
-    attack: { damage: 7, range: 75, cooldownFrames: 22 },
+    speed: 4.9,
+    jumpPower: 15,
+    attack: { damage: 8, range: 72, cooldownFrames: 24 },
     special: {
-      type: 'dash',
-      damage: 15,
-      speed: 16,
-      durationFrames: 14,
-      cooldownFrames: 150
+      type: 'strings',
+      damage: 6,
+      speed: 7,
+      cooldownFrames: 240,
+      reverseFrames: 180   // 3 segundos haciendo lo que él diga
     },
-    voice: { base: 520, wave: 'square' },
-    winPhrase: '¡Demasiado lento, pana!'
+    voice: { base: 340, wave: 'triangle' },
+    winPhrase: 'Al final siempre se hace lo que yo digo.'
   },
   {
-    name: 'MURO',
-    color: '#ef4444',
-    skinColor: '#e8b88a',
-    hairColor: '#5b3a1e',
-    maxHealth: 130,
-    speed: 3.8,
-    jumpPower: 13,
-    attack: { damage: 11, range: 65, cooldownFrames: 30 },
+    name: 'MERYG',
+    title: 'La Voz del Pueblo',
+    color: '#ec4899',
+    skinColor: '#f3c6a5',
+    hairColor: '#7c2d12',
+    maxHealth: 115,
+    speed: 4.6,
+    jumpPower: 14,
+    attack: { damage: 10, range: 65, cooldownFrames: 26 },
     special: {
-      type: 'projectile',
-      damage: 12,
-      speed: 9,
-      cooldownFrames: 180
+      type: 'shout',
+      damage: 14,
+      range: 150,
+      cooldownFrames: 200
     },
-    voice: { base: 170, wave: 'sawtooth' },
-    winPhrase: 'Por aquí no pasa nadie.'
+    voice: { base: 620, wave: 'sawtooth' },
+    winPhrase: '¡Lo dije, lo digo y lo mantengo!'
   }
 ];

@@ -18,8 +18,20 @@ const ROUND_SECONDS = 60;
 const keys = {};
 let keyPressed = {};
 
-const P1_CONTROLS = { left: 'a', right: 'd', jump: 'w', attack: 'f', special: 'g' };
-const P2_CONTROLS = { left: 'arrowleft', right: 'arrowright', jump: 'arrowup', attack: 'k', special: 'l' };
+const P1_CONTROLS = {
+  left: 'a', right: 'd',
+  jump: ' ', jumpAlt: 'w',   // Espacio salta (W sigue funcionando)
+  crouch: 's',
+  attack: 'f', special: 'g',
+  dash: 'shift'
+};
+const P2_CONTROLS = {
+  left: 'arrowleft', right: 'arrowright',
+  jump: 'arrowup',
+  crouch: 'arrowdown',
+  attack: 'k', special: 'l',
+  dash: 'ñ'
+};
 
 window.addEventListener('keydown', (e) => {
   AudioEngine.init();
@@ -132,9 +144,11 @@ function anyPressed(k) {
 const GUEST_KEY_MAP = [
   ['arrowleft', ['a', 'arrowleft']],
   ['arrowright', ['d', 'arrowright']],
-  ['arrowup', ['w', 'arrowup']],
+  ['arrowup', ['w', ' ', 'arrowup']],
+  ['arrowdown', ['s', 'arrowdown']],
   ['k', ['f', 'k', 'mouse0']],
   ['l', ['g', 'l', 'mouse2']],
+  ['ñ', ['shift', 'ñ', 'm']],
   ['r', ['r']],
   ['enter', ['enter']]
 ];
@@ -460,12 +474,22 @@ function drawSelect() {
     ctx.restore();
 
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 22px "Segoe UI", sans-serif';
-    ctx.fillText(def.name, x + cardW / 2, y + 235);
+    ctx.font = 'bold 20px "Segoe UI", sans-serif';
+    ctx.fillText(def.name, x + cardW / 2, y + 228);
+    if (def.title) {
+      ctx.fillStyle = def.color;
+      ctx.font = 'italic 13px "Segoe UI", sans-serif';
+      ctx.fillText(def.title, x + cardW / 2, y + 246);
+    }
     ctx.fillStyle = '#9ca3af';
-    ctx.font = '13px "Segoe UI", sans-serif';
-    const specialName = def.special.type === 'dash' ? 'Embestida' : 'Proyectil';
-    ctx.fillText(`❤ ${def.maxHealth} · ✦ ${specialName}`, x + cardW / 2, y + 258);
+    ctx.font = '12px "Segoe UI", sans-serif';
+    const SPECIAL_NAMES = {
+      projectile: 'Proyectil',
+      strings: 'Hilos de control',
+      shout: 'Grito demoledor'
+    };
+    const specialName = SPECIAL_NAMES[def.special.type] || def.special.type;
+    ctx.fillText(`❤ ${def.maxHealth} · ✦ ${specialName}`, x + cardW / 2, y + 262);
   });
 
   ctx.font = '18px "Segoe UI", sans-serif';
@@ -504,9 +528,11 @@ function updateFight() {
   game.projectiles = game.projectiles.filter((p) => p.alive);
 }
 
-// Evita que los luchadores se atraviesen.
+// Evita que los luchadores se atraviesen (salvo durante un dash,
+// que atraviesa al rival a propósito).
 function separateFighters(a, b) {
   if (a.state === 'ko' || b.state === 'ko') return;
+  if (a.state === 'dash' || b.state === 'dash') return;
   const boxA = a.hurtbox;
   const boxB = b.hurtbox;
   if (!rectsOverlap(boxA, boxB)) return;
@@ -613,21 +639,23 @@ function drawHealthBar(f, x, mirrored) {
   ctx.lineWidth = 2;
   ctx.strokeRect(x, 24, barW, 26);
 
-  // barra de especial (amarilla cuando está lista)
-  const cd = f.def.special.cooldownFrames;
-  const ready = 1 - f.specialCooldown / cd;
-  const specialW = barW * 0.6;
-  const specialX = mirrored ? x + barW - specialW : x;
-  ctx.fillStyle = '#111';
-  ctx.fillRect(specialX, 56, specialW, 8);
-  ctx.fillStyle = ready >= 1 ? '#fbbf24' : '#6b7280';
-  const sw = specialW * Math.min(1, ready);
-  ctx.fillRect(mirrored ? specialX + specialW - sw : specialX, 56, sw, 8);
+  // mini-barras de cooldown: especial (amarilla) y dash (cian)
+  const miniBar = (y, frac, color) => {
+    const bw = barW * 0.6;
+    const bx = mirrored ? x + barW - bw : x;
+    ctx.fillStyle = '#111';
+    ctx.fillRect(bx, y, bw, 7);
+    ctx.fillStyle = frac >= 1 ? color : '#6b7280';
+    const fw = bw * Math.min(1, frac);
+    ctx.fillRect(mirrored ? bx + bw - fw : bx, y, fw, 7);
+  };
+  miniBar(55, 1 - f.specialCooldown / f.def.special.cooldownFrames, '#fbbf24');
+  miniBar(65, 1 - f.dashCooldown / DASH_COOLDOWN, '#22d3ee');
 
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 18px "Segoe UI", sans-serif';
   ctx.textAlign = mirrored ? 'right' : 'left';
-  ctx.fillText(f.def.name, mirrored ? x + barW : x, 86);
+  ctx.fillText(f.def.name, mirrored ? x + barW : x, 92);
 }
 
 function drawHUD() {
@@ -657,9 +685,11 @@ function buildSnapshot() {
       fighters: game.fighters.map((f) => ({
         x: f.x, y: f.y, vx: f.vx, vy: f.vy, facing: f.facing,
         state: f.state, stateTimer: f.stateTimer, health: f.health,
-        flash: f.flash, specialCooldown: f.specialCooldown
+        flash: f.flash, specialCooldown: f.specialCooldown,
+        crouching: f.crouching, dashDir: f.dashDir, dashCooldown: f.dashCooldown,
+        reversedTimer: f.reversedTimer, shoutFx: f.shoutFx
       })),
-      projectiles: game.projectiles.map((p) => ({ x: p.x, y: p.y, vx: p.vx, age: p.age, color: p.color }))
+      projectiles: game.projectiles.map((p) => ({ x: p.x, y: p.y, vx: p.vx, age: p.age, color: p.color, kind: p.kind }))
     };
   }
   return snap;

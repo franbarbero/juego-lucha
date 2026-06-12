@@ -56,6 +56,7 @@ const AudioEngine = {
 
   // --- Efectos por personaje (usan su voz) ---
   jump(voice)    { this.tone(voice.base, 0.18, voice.wave, 0.07, voice.base * 1.8); },
+  dash(voice)    { this.noise(0.08, 0.08); this.tone(voice.base * 1.2, 0.12, voice.wave, 0.07, voice.base * 2.6); },
   attack(voice)  { this.tone(voice.base * 1.4, 0.07, voice.wave, 0.08, voice.base * 0.7); },
   special(voice) { this.tone(voice.base * 0.8, 0.3, voice.wave, 0.11, voice.base * 2.4); },
   hit(voice) {

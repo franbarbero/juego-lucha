@@ -1,4 +1,4 @@
-# Niños con problemas: Fighting game 🥊
+# Niños con problemas: Fighting game 
 
 Juego de lucha 2D para 2 jugadores — en el mismo teclado o **online con código de sala** — hecho con JavaScript y HTML5 Canvas. No necesita instalación: **doble clic en `index.html`** y a pelear.
 
@@ -14,22 +14,29 @@ Funciona con **WebRTC (PeerJS)**: los dos navegadores se conectan directamente e
 
 ## Controles
 
-| Acción   | Jugador 1 | Jugador 2 |
-|----------|-----------|-----------|
-| Moverse  | A / D     | ← / →     |
-| Saltar   | W         | ↑         |
-| Golpe    | F         | K         |
-| Especial | G         | L         |
+| Acción                 | Jugador 1          | Jugador 2 |
+|------------------------|--------------------|-----------|
+| Moverse                | A / D              | ← / →     |
+| Saltar (¡doble salto!) | ESPACIO (o W)      | ↑         |
+| Agacharse              | S                  | ↓         |
+| Dash                   | SHIFT              | Ñ         |
+| Golpe                  | F o clic izquierdo | K         |
+| Especial               | G o clic derecho   | L         |
 
-En la pantalla de KO: **R** = revancha, **ENTER** = volver a elegir personajes.
+- El **dash** atraviesa al rival y esquiva proyectiles y gritos. Tiene su propio cooldown (la barra **cian** del HUD; la amarilla es el especial).
+- **Agacharse** encoge tu hitbox: los proyectiles pasan por encima. Puedes caminar y pegar bajo mientras estás agachado.
+- En la pantalla de KO: **R** = revancha, **ENTER** = volver a elegir personajes. El ratón también sirve para todos los menús.
 
 ## Cómo agregar a un amigo
 
 Abre [js/characters.js](js/characters.js), copia uno de los personajes existentes, pégalo al final de la lista y cambia sus valores (nombre, colores, vida, velocidad, habilidad especial, voz y frase de victoria). Aparecerá automáticamente en la pantalla de selección. Las instrucciones detalladas de cada campo están comentadas al inicio de ese archivo.
 
 Habilidades especiales disponibles por ahora:
-- `dash` — embestida veloz hacia adelante
-- `projectile` — lanza un proyectil
+- `projectile` — lanza un proyectil que hace daño
+- `strings` — hilos de titiritero: poco daño pero invierte los controles del rival unos segundos
+- `shout` — grito de área frontal: daño y un empujón enorme
+
+(El dash no se configura por personaje: todos lo tienen igual, con el mismo cooldown.)
 
 ## Estructura del proyecto
 
