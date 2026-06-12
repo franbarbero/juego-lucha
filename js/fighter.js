@@ -398,12 +398,6 @@ class Fighter {
   }
 
   draw(ctx) {
-    // sombra en el piso
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
-    ctx.beginPath();
-    ctx.ellipse(this.x, FLOOR_Y + 6, 34, 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-
     // estela del dash
     if (this.state === 'dash') {
       ctx.fillStyle = this.def.color + '55';
