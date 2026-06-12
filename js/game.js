@@ -748,12 +748,22 @@ function hostOrLocalTick() {
     startMenu();
   }
 
-  if (scene === 'menu') { updateMenu(); drawMenu(); }
-  else if (scene === 'join') { updateJoin(); drawJoin(); }
-  else if (scene === 'lobby') { updateLobby(); drawLobby(); }
-  else if (scene === 'select') { updateSelect(); drawSelect(); }
-  else if (scene === 'fight') { updateFight(); drawFight(); }
-  else if (scene === 'ko') { updateKO(); drawKO(); }
+  // 1) actualizar — la escena puede cambiar aquí (p. ej. ESC en el KO)
+  if (scene === 'menu') updateMenu();
+  else if (scene === 'join') updateJoin();
+  else if (scene === 'lobby') updateLobby();
+  else if (scene === 'select') updateSelect();
+  else if (scene === 'fight') updateFight();
+  else if (scene === 'ko') updateKO();
+
+  // 2) dibujar la escena ACTUAL — si el update la cambió, dibujamos
+  // ya la nueva; dibujar la vieja crashearía (su estado ya no existe)
+  if (scene === 'menu') drawMenu();
+  else if (scene === 'join') drawJoin();
+  else if (scene === 'lobby') drawLobby();
+  else if (scene === 'select') drawSelect();
+  else if (scene === 'fight') drawFight();
+  else if (scene === 'ko') drawKO();
 
   if (Net.mode === 'host' && Net.status === 'connected' &&
       (scene === 'select' || scene === 'fight' || scene === 'ko')) {
