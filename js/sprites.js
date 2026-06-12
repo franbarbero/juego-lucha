@@ -62,7 +62,7 @@ function spritePoseFor(f) {
   if (f.state === 'ko' || f.state === 'hit') return 'hurt';
   // cada golpe de la cadena de combo usa su propio frame: 1→2→3→4
   if (f.state === 'attack') return 'attack' + (f.comboStage + 1);
-  if (f.state === 'recover') return f.stateTimer > 7 ? 'special1' : 'special2';
+  if (f.state === 'recover') return f.stateTimer > 12 ? 'special1' : 'special2';
   if (f.state === 'dash' || !f.onGround) return 'jump';
   if (f.crouching) return tick ? 'crouch2' : 'crouch1';
   if (f.vx !== 0) return 'walk' + (Math.floor(performance.now() / 140) % 4 + 1);

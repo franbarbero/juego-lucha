@@ -217,6 +217,7 @@ function startFight(p1Index, p2Index) {
     ],
     projectiles: [],
     timer: ROUND_SECONDS * 60,
+    hitstop: 0, // frames de pausa dramática al conectar un golpe
     intro: 110,
     winner: null,
     koTimer: 0,
@@ -534,6 +535,12 @@ function updateFight() {
     return;
   }
 
+  // hitstop: el mundo se congela unos frames tras un impacto
+  if (game.hitstop > 0) {
+    game.hitstop--;
+    return;
+  }
+
   if (game.timer > 0) game.timer--;
   if (game.timer === 0) {
     const [a, b] = game.fighters;
@@ -569,9 +576,15 @@ function separateFighters(a, b) {
 }
 
 function drawFight() {
+  ctx.save();
+  // sacudida sutil de pantalla durante el hitstop
+  if (game.hitstop > 0) {
+    ctx.translate((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6);
+  }
   drawStage();
   game.projectiles.forEach((p) => p.draw(ctx));
   game.fighters.forEach((f) => f.draw(ctx));
+  ctx.restore();
   drawHUD();
 
   if (game.intro > 0) {
@@ -584,6 +597,11 @@ function drawFight() {
 
 // --- Escena: KO / fin de ronda ---
 function updateKO() {
+  // el hitstop del golpe de KO también congela la caída un instante
+  if (game.hitstop > 0) {
+    game.hitstop--;
+    return;
+  }
   // el perdedor cae y el ganador puede dar su vuelta de la victoria
   const [f1, f2] = game.fighters;
   f1.update(f2, game);
@@ -706,6 +724,7 @@ function buildSnapshot() {
       timer: game.timer,
       intro: game.intro,
       koTimer: game.koTimer,
+      hitstop: game.hitstop,
       winner: game.winner ? game.fighters.indexOf(game.winner) : -1,
       fighters: game.fighters.map((f) => ({
         x: f.x, y: f.y, vx: f.vx, vy: f.vy, facing: f.facing,
@@ -740,6 +759,7 @@ function applySnapshot(s) {
     game.timer = s.game.timer;
     game.intro = s.game.intro;
     game.koTimer = s.game.koTimer;
+    game.hitstop = s.game.hitstop || 0;
     game.winner = s.game.winner >= 0 ? game.fighters[s.game.winner] : null;
     s.game.fighters.forEach((fd, i) => Object.assign(game.fighters[i], fd));
     game.projectiles = s.game.projectiles.map((pd) => Object.assign(Object.create(Projectile.prototype), pd));

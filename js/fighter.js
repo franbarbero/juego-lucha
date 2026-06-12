@@ -92,6 +92,7 @@ class Fighter {
     this.jumpsUsed = 0;          // saltos gastados (máx. MAX_JUMPS)
     this.comboStage = 0;         // golpe actual de la cadena (0..3)
     this.comboWindow = 0;        // frames restantes para encadenar el siguiente
+    this.swingDuration = 0;      // duración del golpe en curso
     this.crouching = false;
     this.dashCooldown = 0;
     this.dashDir = facing;
@@ -134,8 +135,11 @@ class Fighter {
     if (this.state === 'hit' || this.state === 'recover') {
       if (--this.stateTimer <= 0) this.state = 'idle';
     } else if (this.state === 'attack') {
-      // frames activos del golpe: una ventana a mitad de la animación
-      if (this.stateTimer <= 10 && this.stateTimer >= 5 && !this.hitRegistered) {
+      this.vx *= 0.85; // frenar la embestida del golpe poco a poco
+      // frames activos: tras 6 frames de preparación, 6 frames de impacto
+      const actFrom = this.swingDuration - 6;
+      const actTo = this.swingDuration - 12;
+      if (this.stateTimer <= actFrom && this.stateTimer >= actTo && !this.hitRegistered) {
         if (rectsOverlap(this.attackHitbox, opponent.hurtbox)) {
           this.hitRegistered = true;
           const finisher = this.comboStage === 3;
@@ -150,8 +154,9 @@ class Fighter {
       }
       if (--this.stateTimer <= 0) {
         this.state = 'idle';
+        this.vx = 0;
         if (this.comboStage < 3) {
-          this.comboWindow = 20; // margen para encadenar el siguiente golpe
+          this.comboWindow = 24; // margen para encadenar el siguiente golpe
         } else {
           this.comboStage = 0;   // tras el remate, la cadena empieza de cero
           this.comboWindow = 0;
@@ -220,8 +225,12 @@ class Fighter {
       this.comboStage = this.comboWindow > 0 ? Math.min(this.comboStage + 1, 3) : 0;
       this.comboWindow = 0;
       this.state = 'attack';
-      this.stateTimer = this.comboStage > 0 ? 12 : 14; // los encadenados salen más rápido
+      // más largos que antes para que la animación se aprecie;
+      // los encadenados siguen saliendo algo más rápido
+      this.swingDuration = this.comboStage > 0 ? 16 : 20;
+      this.stateTimer = this.swingDuration;
       this.hitRegistered = false;
+      this.vx = this.facing * 3; // pequeña embestida hacia delante
       // entre golpes de la cadena casi no hay espera; tras el remate, la completa
       this.attackCooldown = this.comboStage === 3 ? this.def.attack.cooldownFrames + 10 : 8;
       // el tono del golpe sube con cada eslabón del combo
@@ -237,12 +246,12 @@ class Fighter {
       const type = this.def.special.type;
       if (type === 'projectile' || type === 'strings') {
         this.state = 'recover';
-        this.stateTimer = 14;
+        this.stateTimer = 24;
         game.projectiles.push(new Projectile(this));
       } else if (type === 'shout') {
         // onda expansiva frontal: daño + empujón enorme
         this.state = 'recover';
-        this.stateTimer = 18;
+        this.stateTimer = 24;
         this.shoutFx = 22;
         const range = this.def.special.range;
         const box = {
@@ -283,6 +292,10 @@ class Fighter {
     // recibir un golpe corta tu propia cadena de combo
     this.comboStage = 0;
     this.comboWindow = 0;
+    // hitstop: micro-pausa al conectar, más larga cuanto más fuerte el golpe
+    if (game.hitstop !== undefined) {
+      game.hitstop = Math.max(game.hitstop, this.health <= 0 ? 16 : damage >= 12 ? 9 : 6);
+    }
     if (this.health <= 0) {
       this.state = 'ko';
       this.vy = -8;
