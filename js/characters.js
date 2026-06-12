@@ -50,10 +50,10 @@ const CHARACTERS = [
     maxHealth: 100,
     speed: 4.9,
     jumpPower: 15,
-    attack: { damage: 8, range: 72, cooldownFrames: 24 },
+    attack: { damage: 5, range: 72, cooldownFrames: 24 },
     special: {
       type: 'strings',
-      damage: 6,
+      damage: 4,
       speed: 7,
       cooldownFrames: 240,
       reverseFrames: 180   // 3 segundos haciendo lo que él diga
@@ -72,10 +72,10 @@ const CHARACTERS = [
     maxHealth: 115,
     speed: 4.6,
     jumpPower: 14,
-    attack: { damage: 10, range: 65, cooldownFrames: 26 },
+    attack: { damage: 7, range: 65, cooldownFrames: 26 },
     special: {
       type: 'shout',
-      damage: 14,
+      damage: 11,
       range: 220,
       cooldownFrames: 200
     },

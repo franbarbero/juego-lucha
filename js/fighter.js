@@ -20,7 +20,7 @@ const MAX_JUMPS = 2; // doble salto
 
 // Bloqueo: aguante máximo antes de la rotura de guardia, y frames
 // iniciales del bloqueo en los que un golpe recibido cuenta como parry.
-const GUARD_BREAK_AT = 28;
+const GUARD_BREAK_AT = 20; // ajustado a los daños rebajados (~3 golpes seguidos)
 const PARRY_WINDOW = 7;
 const PARRY_STUN = 60; // 1 segundo incapacitado
 
@@ -155,9 +155,17 @@ class Fighter {
     if (this.state === 'hit' || this.state === 'recover' || this.state === 'stunned') {
       if (--this.stateTimer <= 0) this.state = 'idle';
     } else if (this.state === 'block') {
+      // puedes desplazarte (despacio) sin bajar la guardia
+      const c = this.controls;
+      const rev = this.reversedTimer > 0;
+      const blockSpeed = this.def.speed * 0.45;
       this.vx = 0;
+      if (this.input.down(rev ? c.right : c.left)) this.vx = -blockSpeed;
+      if (this.input.down(rev ? c.left : c.right)) this.vx = blockSpeed;
+      if (this.vx > 0) this.facing = 1;
+      else if (this.vx < 0) this.facing = -1;
       if (this.parryWindow > 0) this.parryWindow--;
-      if (!this.input.down(this.controls.block)) this.state = 'idle';
+      if (!this.input.down(c.block)) this.state = 'idle';
     } else if (this.state === 'attack') {
       this.vx *= 0.85; // frenar la embestida del golpe poco a poco
       // frames activos: tras 6 frames de preparación, 6 frames de impacto
