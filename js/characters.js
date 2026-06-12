@@ -42,6 +42,7 @@ const CHARACTERS = [
   {
     name: 'BARBERO',
     title: 'El Titiritero',
+    spriteFolder: 'img/barbero',
     color: '#8b5cf6',
     skinColor: '#fcd9b8',
     hairColor: '#27272a',
@@ -62,6 +63,7 @@ const CHARACTERS = [
   {
     name: 'MERYG',
     title: 'La Voz del Pueblo',
+    spriteFolder: 'img/meryg',
     color: '#ec4899',
     skinColor: '#f3c6a5',
     hairColor: '#7c2d12',

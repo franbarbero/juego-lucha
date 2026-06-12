@@ -1,0 +1,12 @@
+Guarda aquí las hojas de sprites tal cual salen del generador
+(PNG, idealmente con fondo transparente):
+
+  barbero.png  → la fila del Puppet Master
+  meryg.png    → la fila del Justice Sentinel
+
+(si el generador te dio las dos filas en una sola imagen, guárdala
+como sheet.png y ya está)
+
+Luego Claude las recorta en frames individuales dentro de
+img/barbero/ e img/meryg/ con los nombres que espera el juego
+(idle1.png, walk1.png, attack1.png, etc.).

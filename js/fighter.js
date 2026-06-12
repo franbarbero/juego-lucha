@@ -290,11 +290,21 @@ class Fighter {
     if (this.facing === -1) ctx.scale(-1, 1);
     if (this.crouching) ctx.scale(1, 0.55);
     if (this.state === 'dash') ctx.globalAlpha = 0.6; // intangible
-    drawFighterFigure(ctx, this.def, {
-      flash: this.flash,
-      attacking: this.state === 'attack' && this.stateTimer <= 11,
-      reach: this.def.attack.range - 15
-    });
+
+    const sprite = Sprites.get(this.def, spritePoseFor(this));
+    if (sprite) {
+      const sh = this.def.spriteHeight || 150;
+      const sw = sh * sprite.width / sprite.height;
+      if (this.flash > 0) ctx.filter = 'brightness(2.5)';
+      ctx.drawImage(sprite, -sw / 2, -sh, sw, sh);
+      ctx.filter = 'none';
+    } else {
+      drawFighterFigure(ctx, this.def, {
+        flash: this.flash,
+        attacking: this.state === 'attack' && this.stateTimer <= 11,
+        reach: this.def.attack.range - 15
+      });
+    }
     ctx.restore();
 
     // ondas del grito

@@ -479,12 +479,19 @@ function drawSelect() {
       ctx.strokeRect(x + 2, y + 2, cardW - 4, 266);
     }
 
-    // figura del personaje
-    ctx.save();
-    ctx.translate(x + cardW / 2, y + 200);
-    ctx.scale(0.95, 0.95);
-    drawFighterFigure(ctx, def, {});
-    ctx.restore();
+    // figura del personaje (sprite si lo tiene, muñeco si no)
+    const cardSprite = Sprites.get(def, 'idle1');
+    if (cardSprite) {
+      const sh = 155;
+      const sw = sh * cardSprite.width / cardSprite.height;
+      ctx.drawImage(cardSprite, x + cardW / 2 - sw / 2, y + 200 - sh, sw, sh);
+    } else {
+      ctx.save();
+      ctx.translate(x + cardW / 2, y + 200);
+      ctx.scale(0.95, 0.95);
+      drawFighterFigure(ctx, def, {});
+      ctx.restore();
+    }
 
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 20px "Segoe UI", sans-serif';
