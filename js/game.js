@@ -128,6 +128,14 @@ const JOIN_GO = { x: W / 2 - 110, y: 360, w: 220, h: 44 };
 const JOIN_BACK = { x: W / 2 - 110, y: 420, w: 220, h: 40 };
 const KO_REMATCH = { x: W / 2 - 320, y: H / 2 + 48, w: 300, h: 46 };
 const KO_SELECT = { x: W / 2 + 20, y: H / 2 + 48, w: 300, h: 46 };
+const KO_MENU = { x: W / 2 - 150, y: H / 2 + 104, w: 300, h: 40 };
+const SELECT_BACK = { x: 24, y: H - 64, w: 190, h: 40 };
+
+// Salir al menú principal (cerrando la sala si estamos online).
+function backToMenu() {
+  if (Net.mode !== 'local') Net.reset();
+  startMenu();
+}
 
 // Fuentes de entrada: el P2 lee del invitado cuando somos host.
 const localInput = { down: (k) => !!keys[k], pressed: (k) => !!keyPressed[k] };
@@ -395,6 +403,11 @@ function drawNetRoleHint() {
 
 // --- Escena: selección de personaje ---
 function updateSelect() {
+  if (keyPressed['escape'] || mouseClickedIn(SELECT_BACK)) {
+    backToMenu();
+    return;
+  }
+
   const moveCursor = (player, dir) => {
     select[player] = (select[player] + dir + CHARACTERS.length) % CHARACTERS.length;
     playSfx('select');
@@ -500,6 +513,8 @@ function drawSelect() {
     ? 'P2: ←/→ y K para confirmar · o haz clic en una carta'
     : 'P2: ←/→ para moverte, K para confirmar';
   ctx.fillText(select.p2Ready ? 'P2 ¡LISTO!' : p2Hint, W / 2, 495);
+
+  drawButton(SELECT_BACK, '← Menú (ESC)');
 }
 
 // --- Escena: pelea ---
@@ -575,7 +590,7 @@ function updateKO() {
 
   if (anyPressed('r') || mouseClickedIn(KO_REMATCH)) startFight(game.p1Index, game.p2Index);
   else if (anyPressed('enter') || mouseClickedIn(KO_SELECT)) startSelect();
-  else if (keyPressed['escape'] && Net.mode === 'local') startMenu();
+  else if (keyPressed['escape'] || mouseClickedIn(KO_MENU)) backToMenu();
 }
 
 function drawKO() {
@@ -583,7 +598,7 @@ function drawKO() {
   if (game.koTimer > 0) return;
 
   ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-  ctx.fillRect(0, H / 2 - 120, W, 240);
+  ctx.fillRect(0, H / 2 - 130, W, 290);
 
   ctx.textAlign = 'center';
   ctx.fillStyle = '#fff';
@@ -598,6 +613,7 @@ function drawKO() {
   }
   drawButton(KO_REMATCH, 'REVANCHA (R)', true);
   drawButton(KO_SELECT, 'ELEGIR PERSONAJES (ENTER)');
+  drawButton(KO_MENU, 'MENÚ PRINCIPAL (ESC)');
 }
 
 // --- Escenario y HUD ---
@@ -758,7 +774,11 @@ function guestTick() {
     return;
   }
 
-  if (keyPressed['escape']) {
+  // salir al menú: ESC siempre, o clic en los botones de volver
+  const clickedBack =
+    (scene === 'select' && mouseClickedIn(SELECT_BACK)) ||
+    (scene === 'ko' && game && game.koTimer === 0 && mouseClickedIn(KO_MENU));
+  if (keyPressed['escape'] || clickedBack) {
     Net.reset();
     startMenu();
     return;
