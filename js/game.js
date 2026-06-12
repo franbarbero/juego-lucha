@@ -483,7 +483,8 @@ function drawSelect() {
     // figura del personaje (sprite si lo tiene, muñeco si no)
     const cardSprite = Sprites.get(def, 'idle1');
     if (cardSprite) {
-      const sh = 175; // el lienzo trae aire arriba: así el cuerpo llena la carta
+      // proporcional al tamaño en combate (el lienzo trae aire arriba)
+      const sh = def.spriteHeight ? def.spriteHeight * 0.85 : 175;
       const sw = sh * cardSprite.width / cardSprite.height;
       ctx.drawImage(cardSprite, x + cardW / 2 - sw / 2, y + 200 - sh, sw, sh);
     } else {

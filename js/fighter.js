@@ -288,10 +288,12 @@ class Fighter {
       ctx.translate(0, 28);
     }
     if (this.facing === -1) ctx.scale(-1, 1);
-    if (this.crouching) ctx.scale(1, 0.55);
+    const pose = spritePoseFor(this);
+    // aplastar la figura al agacharse solo si NO hay sprite real de agachado
+    if (this.crouching && !Sprites.exact(this.def, pose)) ctx.scale(1, 0.55);
     if (this.state === 'dash') ctx.globalAlpha = 0.6; // intangible
 
-    const sprite = Sprites.get(this.def, spritePoseFor(this));
+    const sprite = Sprites.get(this.def, pose);
     if (sprite) {
       const sh = this.def.spriteHeight || 150;
       const sw = sh * sprite.width / sprite.height;

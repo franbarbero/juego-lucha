@@ -5,10 +5,11 @@
 //  archivos PNG con estos nombres (los que falten no pasan nada:
 //  se usa el muñeco vectorial de siempre como respaldo):
 //
-//    idle1.png  idle2.png      → quieto (alternan)
-//    walk1.png  walk2.png      → caminando (alternan)
-//    attack1.png attack2.png   → golpe (preparación / impacto)
-//    special1.png special2.png → habilidad especial
+//    idle1/2.png               → quieto (alternan)
+//    crouch1/2.png             → agachado (alternan)
+//    walk1/2/3/4.png           → ciclo de caminar
+//    attack1/2/3/4.png         → golpe (preparación → impacto → final)
+//    special1/2.png            → habilidad especial
 //    jump.png                  → en el aire (también el dash)
 //    hurt.png                  → recibir golpe (también el KO, tumbado)
 //
@@ -16,9 +17,10 @@
 // ============================================================
 
 const SPRITE_POSES = [
-  'idle1', 'idle2', 'walk1', 'walk2',
-  'attack1', 'attack2', 'special1', 'special2',
-  'jump', 'hurt'
+  'idle1', 'idle2', 'crouch1', 'crouch2',
+  'walk1', 'walk2', 'walk3', 'walk4',
+  'attack1', 'attack2', 'attack3', 'attack4',
+  'special1', 'special2', 'jump', 'hurt'
 ];
 
 const Sprites = {
@@ -44,6 +46,12 @@ const Sprites = {
     const set = this.cache[def.name];
     if (!set) return null;
     return set[pose] || set['idle1'] || null;
+  },
+
+  // ¿Existe exactamente esa pose? (sin contar el respaldo de idle1)
+  exact(def, pose) {
+    const set = this.cache[def.name];
+    return !!(set && set[pose]);
   }
 };
 
@@ -51,10 +59,17 @@ const Sprites = {
 function spritePoseFor(f) {
   const tick = Math.floor(performance.now() / 180) % 2;
   if (f.state === 'ko' || f.state === 'hit') return 'hurt';
-  if (f.state === 'attack') return f.stateTimer > 10 ? 'attack1' : 'attack2';
+  if (f.state === 'attack') {
+    // animación de 4 fases sobre los 14 frames del golpe
+    if (f.stateTimer > 10) return 'attack1';
+    if (f.stateTimer > 7) return 'attack2';
+    if (f.stateTimer > 4) return 'attack3';
+    return 'attack4';
+  }
   if (f.state === 'recover') return f.stateTimer > 7 ? 'special1' : 'special2';
   if (f.state === 'dash' || !f.onGround) return 'jump';
-  if (f.vx !== 0) return tick ? 'walk2' : 'walk1';
+  if (f.crouching) return tick ? 'crouch2' : 'crouch1';
+  if (f.vx !== 0) return 'walk' + (Math.floor(performance.now() / 140) % 4 + 1);
   return tick ? 'idle2' : 'idle1';
 }
 
