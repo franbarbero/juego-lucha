@@ -46,10 +46,10 @@ Habilidades especiales disponibles por ahora:
 
 Tras elegir personaje aparece el **selector de escenarios**. Para añadir uno:
 
-1. Consigue o genera una imagen de **1024 × 576 px** (o 2048 × 1152, se escala sola), PNG o JPG. El estilo pixel art es el que mejor encaja.
-2. **Importante**: el suelo donde pisan los personajes está a **490 px desde arriba** (en escala 1024×576, ≈85% de la altura). La superficie del suelo del dibujo debe estar en esa línea.
-3. Guárdala en `img/stages/` y añade su entrada en [js/stages.js](js/stages.js):
-   `{ name: 'MI ESCENARIO', image: 'img/stages/mi-escenario.png' }`
+1. Consigue o genera una imagen en proporción **16:9** (1024×576, 1672×941, 2048×1152... se escala sola), PNG o JPG. El estilo pixel art es el que mejor encaja.
+2. Guárdala en `img/stages/` y añade su entrada en [js/stages.js](js/stages.js):
+   `{ name: 'MI ESCENARIO', image: 'img/stages/mi-escenario.png', floorY: 440 }`
+3. **floorY** es la altura (en escala 1024×576) de la superficie donde pisan los personajes. Ajústalo a ojo hasta que los pies coincidan con el suelo del dibujo (si no se indica, 490).
 
 ## Estructura del proyecto
 

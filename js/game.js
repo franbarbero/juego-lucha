@@ -192,10 +192,12 @@ function startMenu() {
   menuIndex = 0;
   joinCode = '';
   game = null;
+  FLOOR_Y = DEFAULT_FLOOR_Y; // los menús usan la ciudad por defecto
 }
 
 function startSelect() {
   scene = 'select';
+  FLOOR_Y = DEFAULT_FLOOR_Y;
   select = {
     p1: 0,
     p2: Math.min(1, CHARACTERS.length - 1),
@@ -212,9 +214,11 @@ function onPeerConnected() {
 function startFight(p1Index, p2Index, stageIndex) {
   scene = 'fight';
   matchId++;
+  const sIdx = stageIndex !== undefined ? stageIndex : 0;
+  FLOOR_Y = STAGES[sIdx].floorY || DEFAULT_FLOOR_Y;
   game = {
     matchId,
-    stageIndex: stageIndex !== undefined ? stageIndex : 0,
+    stageIndex: sIdx,
     fighters: [
       // P1 es el jugador local: su golpe/especial también sale con el ratón
       new Fighter(CHARACTERS[p1Index], 280, 1, P1_CONTROLS, withMouseButtons(localInput, P1_CONTROLS)),
@@ -864,6 +868,7 @@ function applySnapshot(s) {
   if (s.game) {
     if (!game || game.matchId !== s.matchId) {
       // partida nueva: crear los luchadores espejo
+      FLOOR_Y = STAGES[s.game.stageIndex || 0].floorY || DEFAULT_FLOOR_Y;
       game = {
         matchId: s.matchId,
         p1Index: s.game.p1Index,

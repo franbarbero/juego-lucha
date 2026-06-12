@@ -5,7 +5,8 @@
 // ============================================================
 
 const GRAVITY = 0.8;
-const FLOOR_Y = 490;
+const DEFAULT_FLOOR_Y = 490;
+let FLOOR_Y = DEFAULT_FLOOR_Y; // cada escenario puede tener su línea de suelo
 const STAGE_LEFT = 50;
 const STAGE_RIGHT = 974;
 

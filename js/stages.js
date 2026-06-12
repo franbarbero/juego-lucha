@@ -7,20 +7,20 @@
 //        { name: 'MI ESCENARIO', image: 'img/stages/mi-escenario.png' }
 //
 //  Especificaciones de la imagen:
-//   - Tamaño: 1024 x 576 px (o el doble, 2048 x 1152, para más nitidez;
-//     se escala automáticamente). Formato PNG o JPG.
-//   - El SUELO donde pisan los personajes está a 490 px desde arriba
-//     (en escala 1024x576). Dibuja la superficie del suelo en esa línea:
-//     todo lo que esté por debajo es "primer plano" del piso.
-//   - Estilo pixel art encaja mejor con los personajes, pero no es
-//     obligatorio.
+//   - Tamaño: proporción 16:9 (1024x576, 1672x941, 2048x1152...);
+//     se escala automáticamente. Formato PNG o JPG.
+//   - floorY: a qué altura (en escala 1024x576) está la superficie
+//     donde pisan los personajes. Si no se indica, 490. Ajústalo a
+//     ojo hasta que los pies coincidan con el suelo del dibujo.
+//   - Estilo pixel art encaja mejor con los personajes.
 //
 //  El primer escenario es la ciudad nocturna dibujada por código.
 // ============================================================
 
 const STAGES = [
-  { name: 'CIUDAD NOCTURNA', builtin: true }
-  // { name: 'MI ESCENARIO', image: 'img/stages/mi-escenario.png' },
+  { name: 'CIUDAD NOCTURNA', builtin: true },
+  { name: "MCDONALD'S", image: 'img/stages/stage1.png', floorY: 420 },
+  { name: 'MC DÖNER', image: 'img/stages/stage2.png', floorY: 440 }
 ];
 
 const StageArt = {
