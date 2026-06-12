@@ -21,11 +21,14 @@ Funciona con **WebRTC (PeerJS)**: los dos navegadores se conectan directamente e
 | Agacharse              | S                  | ↓         |
 | Dash                   | SHIFT              | Ñ         |
 | Golpe                  | F o clic izquierdo | K         |
-| Especial               | G o clic derecho   | L         |
+| Especial               | E                  | L         |
+| Bloquear               | Q o clic derecho   | O         |
 
 - **Combos**: pulsa el golpe varias veces seguidas para encadenar hasta 4 ataques (cada uno con su animación). Los golpes intermedios apenas empujan, así el rival se queda en rango; el cuarto es un **remate** más fuerte que lo lanza por los aires. Si te pegan, tu cadena se corta.
 - El **dash** atraviesa al rival y esquiva proyectiles y gritos. Tiene su propio cooldown (la barra **cian** del HUD; la amarilla es el especial).
 - **Agacharse** encoge tu hitbox: los proyectiles pasan por encima. Puedes caminar y pegar bajo mientras estás agachado.
+- **Bloquear** (mantener): no recibes daño, pero cada golpe bloqueado carga tu barra de tensión (roja, bajo las de cooldown). Si se llena, **te rompen la guardia** y quedas aturdido y expuesto. La tensión baja sola con el tiempo.
+- **Parry**: si el golpe llega en los primeros instantes de tu bloqueo (el escudo se ve dorado), lo desvías sin daño y el atacante queda **incapacitado 1 segundo**, con estrellitas y todo. Alto riesgo, máxima recompensa.
 - En la pantalla de KO: **R** = revancha, **ENTER** = volver a elegir personajes. El ratón también sirve para todos los menús.
 
 ## Cómo agregar a un amigo
@@ -39,12 +42,22 @@ Habilidades especiales disponibles por ahora:
 
 (El dash no se configura por personaje: todos lo tienen igual, con el mismo cooldown.)
 
+## Cómo añadir un escenario
+
+Tras elegir personaje aparece el **selector de escenarios**. Para añadir uno:
+
+1. Consigue o genera una imagen de **1024 × 576 px** (o 2048 × 1152, se escala sola), PNG o JPG. El estilo pixel art es el que mejor encaja.
+2. **Importante**: el suelo donde pisan los personajes está a **490 px desde arriba** (en escala 1024×576, ≈85% de la altura). La superficie del suelo del dibujo debe estar en esa línea.
+3. Guárdala en `img/stages/` y añade su entrada en [js/stages.js](js/stages.js):
+   `{ name: 'MI ESCENARIO', image: 'img/stages/mi-escenario.png' }`
+
 ## Estructura del proyecto
 
 - `index.html` — la página del juego
 - `style.css` — estilos de la página
 - `js/characters.js` — **definición de los personajes (el archivo que editarás más)**
 - `js/sounds.js` — efectos de sonido generados por código (cada personaje tiene su "voz")
+- `js/stages.js` — **escenarios (añade aquí los tuyos)**
 - `js/net.js` — multijugador online (salas, códigos y sincronización por WebRTC)
 - `js/fighter.js` — física, golpes y dibujo de los luchadores
 - `js/game.js` — bucle del juego, escenas, teclado y HUD

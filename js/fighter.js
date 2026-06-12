@@ -18,6 +18,12 @@ const DASH_COOLDOWN = 110;
 
 const MAX_JUMPS = 2; // doble salto
 
+// Bloqueo: aguante máximo antes de la rotura de guardia, y frames
+// iniciales del bloqueo en los que un golpe recibido cuenta como parry.
+const GUARD_BREAK_AT = 28;
+const PARRY_WINDOW = 7;
+const PARRY_STUN = 60; // 1 segundo incapacitado
+
 // Dibuja la figura placeholder de un personaje, de pie, mirando
 // a la derecha, con los pies en el origen (0, 0). La usan tanto
 // los luchadores como la pantalla de selección.
@@ -93,6 +99,10 @@ class Fighter {
     this.comboStage = 0;         // golpe actual de la cadena (0..3)
     this.comboWindow = 0;        // frames restantes para encadenar el siguiente
     this.swingDuration = 0;      // duración del golpe en curso
+    this.attackBuffer = 0;       // pulsación de golpe guardada (sale en cuanto se pueda)
+    this.blockStrain = 0;        // tensión acumulada del bloqueo (rotura al llegar al tope)
+    this.parryWindow = 0;        // frames iniciales del bloqueo que cuentan como parry
+    this.parryFx = 0;            // destello del parry
     this.crouching = false;
     this.dashCooldown = 0;
     this.dashDir = facing;
@@ -125,6 +135,16 @@ class Fighter {
     if (this.reversedTimer > 0) this.reversedTimer--;
     if (this.shoutFx > 0) this.shoutFx--;
     if (this.comboWindow > 0 && --this.comboWindow === 0) this.comboStage = 0;
+    if (this.parryFx > 0) this.parryFx--;
+    if (this.blockStrain > 0) this.blockStrain = Math.max(0, this.blockStrain - 0.12);
+
+    // buffer de ataque: la pulsación se guarda aunque llegue a mitad de
+    // un golpe, y se dispara en cuanto el personaje vuelve a estar libre
+    if (this.state !== 'ko' && this.input.pressed(this.controls.attack)) {
+      this.attackBuffer = 12;
+    } else if (this.attackBuffer > 0) {
+      this.attackBuffer--;
+    }
 
     if (this.state === 'ko') {
       this.applyPhysics();
@@ -132,8 +152,12 @@ class Fighter {
       return;
     }
 
-    if (this.state === 'hit' || this.state === 'recover') {
+    if (this.state === 'hit' || this.state === 'recover' || this.state === 'stunned') {
       if (--this.stateTimer <= 0) this.state = 'idle';
+    } else if (this.state === 'block') {
+      this.vx = 0;
+      if (this.parryWindow > 0) this.parryWindow--;
+      if (!this.input.down(this.controls.block)) this.state = 'idle';
     } else if (this.state === 'attack') {
       this.vx *= 0.85; // frenar la embestida del golpe poco a poco
       // frames activos: tras 6 frames de preparación, 6 frames de impacto
@@ -144,12 +168,13 @@ class Fighter {
           this.hitRegistered = true;
           const finisher = this.comboStage === 3;
           const mult = [1, 1, 1.25, 1.75][this.comboStage];
-          opponent.takeHit(
+          const result = opponent.takeHit(
             Math.round(this.def.attack.damage * mult), this.facing, game,
             // los golpes intermedios apenas empujan (mantienen el combo);
             // el remate lanza al rival por los aires
             finisher ? { push: 12, lift: 7 } : { push: 3.5, lift: 2 }
           );
+          if (result === 'parried') this.stun(PARRY_STUN);
         }
       }
       if (--this.stateTimer <= 0) {
@@ -198,6 +223,15 @@ class Fighter {
 
     if (this.onGround) this.jumpsUsed = 0;
 
+    // bloquear: mantén pulsado para cubrirte; los primeros frames son parry
+    if (this.input.down(c.block) && this.onGround) {
+      this.state = 'block';
+      this.parryWindow = PARRY_WINDOW;
+      this.crouching = false;
+      this.vx = 0;
+      return;
+    }
+
     const jumpPressed = this.input.pressed(c.jump) ||
       (c.jumpAlt && this.input.pressed(c.jumpAlt));
     if (jumpPressed && this.jumpsUsed < MAX_JUMPS) {
@@ -220,7 +254,8 @@ class Fighter {
       return;
     }
 
-    if (this.input.pressed(c.attack) && this.attackCooldown <= 0) {
+    if (this.attackBuffer > 0 && this.attackCooldown <= 0) {
+      this.attackBuffer = 0;
       // encadenar dentro de la ventana avanza la secuencia 1→2→3→4
       this.comboStage = this.comboWindow > 0 ? Math.min(this.comboStage + 1, 3) : 0;
       this.comboWindow = 0;
@@ -262,9 +297,13 @@ class Fighter {
         };
         // el dash también esquiva el grito (cuenta como ataque a distancia)
         if (opponent.state !== 'dash' && rectsOverlap(box, opponent.hurtbox)) {
-          opponent.takeHit(this.def.special.damage, this.facing, game);
-          opponent.vx = this.facing * 13;
-          opponent.vy = -7;
+          const result = opponent.takeHit(this.def.special.damage, this.facing, game);
+          if (result === 'parried') {
+            this.stun(PARRY_STUN);
+          } else if (result === 'hit' || result === 'ko') {
+            opponent.vx = this.facing * 13;
+            opponent.vy = -7;
+          }
         }
       }
     }
@@ -281,8 +320,47 @@ class Fighter {
     this.x = Math.max(STAGE_LEFT, Math.min(STAGE_RIGHT, this.x));
   }
 
-  takeHit(damage, dir, game, kb) {
+  // Aturdido e indefenso (castigo del parry).
+  stun(frames) {
     if (this.state === 'ko') return;
+    this.state = 'stunned';
+    this.stateTimer = frames;
+    this.vx = 0;
+    this.comboStage = 0;
+    this.comboWindow = 0;
+  }
+
+  // Devuelve cómo terminó el golpe: 'ignored' | 'parried' | 'blocked' | 'ko' | 'hit'
+  takeHit(damage, dir, game, kb) {
+    if (this.state === 'ko') return 'ignored';
+
+    if (this.state === 'block') {
+      if (this.parryWindow > 0) {
+        // ¡PARRY! sin daño, destello y el atacante queda incapacitado
+        this.parryFx = 30;
+        if (game.hitstop !== undefined) game.hitstop = Math.max(game.hitstop, 14);
+        playSfx('parry', this.def.voice);
+        return 'parried';
+      }
+      // bloqueo normal: sin daño, pero la guardia acumula tensión
+      this.blockStrain += damage;
+      this.vx = dir * 3;
+      this.flash = 3;
+      if (this.blockStrain >= GUARD_BREAK_AT) {
+        // ¡guardia rota! aturdido largo y expuesto
+        this.blockStrain = 0;
+        this.state = 'hit';
+        this.stateTimer = 50;
+        this.vx = dir * 6;
+        this.flash = 10;
+        if (game.hitstop !== undefined) game.hitstop = Math.max(game.hitstop, 10);
+        playSfx('guardbreak', this.def.voice);
+      } else {
+        playSfx('block', this.def.voice);
+      }
+      return 'blocked';
+    }
+
     const push = kb && kb.push !== undefined ? kb.push : 7;
     const lift = kb && kb.lift !== undefined ? kb.lift : 5;
     this.health = Math.max(0, this.health - damage);
@@ -302,11 +380,12 @@ class Fighter {
       this.vx = dir * 4;
       playSfx('ko', this.def.voice);
       game.onKO(this);
-    } else {
-      this.state = 'hit';
-      this.stateTimer = 16;
-      playSfx('hit', this.def.voice);
+      return 'ko';
     }
+    this.state = 'hit';
+    this.stateTimer = 16;
+    playSfx('hit', this.def.voice);
+    return 'hit';
   }
 
   draw(ctx) {
@@ -367,6 +446,42 @@ class Fighter {
       }
     }
 
+    // escudo de bloqueo (dorado en la ventana de parry; enrojece con la tensión)
+    if (this.state === 'block') {
+      const strainPct = this.blockStrain / GUARD_BREAK_AT;
+      ctx.strokeStyle = this.parryWindow > 0 ? '#fde047'
+        : strainPct > 0.66 ? '#f87171'
+        : strainPct > 0.33 ? '#fbbf24'
+        : 'rgba(96, 165, 250, 0.9)';
+      ctx.lineWidth = 5;
+      const base = this.facing === 1 ? 0 : Math.PI;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y - 75, 52, base - 0.9, base + 0.9);
+      ctx.stroke();
+    }
+
+    // destello del parry: anillo dorado expandiéndose
+    if (this.parryFx > 0) {
+      const t = 30 - this.parryFx;
+      ctx.strokeStyle = `rgba(253, 224, 71, ${this.parryFx / 30})`;
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y - 75, 34 + t * 3.5, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // estrellitas dando vueltas: aturdido tras un parry
+    if (this.state === 'stunned') {
+      const t = performance.now() / 150;
+      ctx.fillStyle = '#fde047';
+      ctx.font = '16px sans-serif';
+      ctx.textAlign = 'center';
+      for (let i = 0; i < 3; i++) {
+        const a = t + i * (Math.PI * 2 / 3);
+        ctx.fillText('✦', this.x + Math.cos(a) * 26, this.y - 148 + Math.sin(a) * 8);
+      }
+    }
+
     // marioneta sobre la cabeza: controles invertidos por los hilos
     if (this.reversedTimer > 0 && this.state !== 'ko') {
       const cy = this.y - 168 + Math.sin(this.reversedTimer * 0.15) * 3;
@@ -411,9 +526,9 @@ class Projectile {
       if (f.state === 'dash') continue; // el dash atraviesa proyectiles
       if (rectsOverlap(this.hitbox, f.hurtbox)) {
         this.alive = false;
-        f.takeHit(this.damage, Math.sign(this.vx), game);
-        // los hilos toman el control: izquierda y derecha invertidas
-        if (this.reverseFrames && f.state !== 'ko') f.reversedTimer = this.reverseFrames;
+        const result = f.takeHit(this.damage, Math.sign(this.vx), game);
+        // los hilos toman el control... salvo que se bloqueen o parreen
+        if (this.reverseFrames && result === 'hit') f.reversedTimer = this.reverseFrames;
       }
     }
   }

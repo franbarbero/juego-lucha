@@ -63,6 +63,18 @@ const AudioEngine = {
     this.noise(0.1, 0.18);
     this.tone(voice.base * 0.6, 0.15, voice.wave, 0.12, voice.base * 0.3);
   },
+  block(voice) {
+    this.noise(0.04, 0.1);
+    this.tone(voice.base * 0.5, 0.1, 'square', 0.1, voice.base * 0.35);
+  },
+  parry() {
+    this.tone(900, 0.08, 'sine', 0.12, 1400);
+    this.tone(1350, 0.22, 'sine', 0.1, 1900, 0.07);
+  },
+  guardbreak() {
+    this.noise(0.3, 0.25);
+    this.tone(320, 0.45, 'sawtooth', 0.16, 55);
+  },
   ko(voice) {
     this.noise(0.3, 0.25);
     this.tone(voice.base, 0.7, voice.wave, 0.15, 40);

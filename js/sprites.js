@@ -59,7 +59,8 @@ const Sprites = {
 // Qué pose corresponde al estado actual de un luchador.
 function spritePoseFor(f) {
   const tick = Math.floor(performance.now() / 180) % 2;
-  if (f.state === 'ko' || f.state === 'hit') return 'hurt';
+  // hurt sirve también para bloquear (la hoja lo llama HURT/BLOCK) y el aturdido
+  if (f.state === 'ko' || f.state === 'hit' || f.state === 'block' || f.state === 'stunned') return 'hurt';
   // cada golpe de la cadena de combo usa su propio frame: 1→2→3→4
   if (f.state === 'attack') return 'attack' + (f.comboStage + 1);
   if (f.state === 'recover') return f.stateTimer > 12 ? 'special1' : 'special2';

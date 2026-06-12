@@ -23,15 +23,17 @@ const P1_CONTROLS = {
   left: 'a', right: 'd',
   jump: ' ', jumpAlt: 'w',   // Espacio salta (W sigue funcionando)
   crouch: 's',
-  attack: 'f', special: 'g',
-  dash: 'shift'
+  attack: 'f', special: 'e',
+  dash: 'shift',
+  block: 'q'                 // también clic derecho (ver withMouseButtons)
 };
 const P2_CONTROLS = {
   left: 'arrowleft', right: 'arrowright',
   jump: 'arrowup',
   crouch: 'arrowdown',
   attack: 'k', special: 'l',
-  dash: 'ñ'
+  dash: 'ñ',
+  block: 'o'
 };
 
 window.addEventListener('keydown', (e) => {
@@ -77,15 +79,15 @@ window.addEventListener('mouseup', (e) => {
 canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // Envuelve una fuente de entrada para que el clic izquierdo cuente
-// como la tecla de golpe y el derecho como la de especial.
+// como la tecla de golpe y el derecho como la de bloqueo.
 function withMouseButtons(base, controls) {
   return {
     down: (k) => base.down(k) ||
       (k === controls.attack && !!keys['mouse0']) ||
-      (k === controls.special && !!keys['mouse2']),
+      (k === controls.block && !!keys['mouse2']),
     pressed: (k) => base.pressed(k) ||
       (k === controls.attack && !!keyPressed['mouse0']) ||
-      (k === controls.special && !!keyPressed['mouse2'])
+      (k === controls.block && !!keyPressed['mouse2'])
   };
 }
 
@@ -156,8 +158,9 @@ const GUEST_KEY_MAP = [
   ['arrowup', ['w', ' ', 'arrowup']],
   ['arrowdown', ['s', 'arrowdown']],
   ['k', ['f', 'k', 'mouse0']],
-  ['l', ['g', 'l', 'mouse2']],
+  ['l', ['e', 'g', 'l']],
   ['ñ', ['shift', 'ñ', 'm']],
+  ['o', ['q', 'o', 'mouse2']],
   ['r', ['r']],
   ['enter', ['enter']]
 ];
@@ -173,11 +176,12 @@ function collectGuestInput() {
 }
 
 // --- Estado global ---
-let scene = 'menu'; // menu | join | lobby | select | fight | ko
+let scene = 'menu'; // menu | join | lobby | select | stage | fight | ko
 let menuIndex = 0;
 let joinCode = '';
 let netNotice = '';
 let select = null;
+let stageSel = 0;
 let game = null;
 let matchId = 0;
 
@@ -205,11 +209,12 @@ function onPeerConnected() {
   startSelect();
 }
 
-function startFight(p1Index, p2Index) {
+function startFight(p1Index, p2Index, stageIndex) {
   scene = 'fight';
   matchId++;
   game = {
     matchId,
+    stageIndex: stageIndex !== undefined ? stageIndex : 0,
     fighters: [
       // P1 es el jugador local: su golpe/especial también sale con el ratón
       new Fighter(CHARACTERS[p1Index], 280, 1, P1_CONTROLS, withMouseButtons(localInput, P1_CONTROLS)),
@@ -442,7 +447,90 @@ function updateSelect() {
     }
   });
 
-  if (select.p1Ready && select.p2Ready) startFight(select.p1, select.p2);
+  if (select.p1Ready && select.p2Ready) {
+    scene = 'stage'; // ambos listos: a elegir escenario
+  }
+}
+
+// --- Escena: selección de escenario (elige P1 / el host) ---
+const stageCardRect = (i) => {
+  const cardW = 290;
+  const gap = 36;
+  const total = STAGES.length * cardW + (STAGES.length - 1) * gap;
+  return { x: (W - total) / 2 + i * (cardW + gap), y: 170, w: cardW, h: 200 };
+};
+
+function updateStageSelect() {
+  if (keyPressed['escape'] || mouseClickedIn(SELECT_BACK)) {
+    startSelect();
+    return;
+  }
+  if (keyPressed['a'] || keyPressed['arrowleft']) {
+    stageSel = (stageSel + STAGES.length - 1) % STAGES.length;
+    playSfx('select');
+  }
+  if (keyPressed['d'] || keyPressed['arrowright']) {
+    stageSel = (stageSel + 1) % STAGES.length;
+    playSfx('select');
+  }
+  if (keyPressed['f'] || keyPressed['enter']) {
+    playSfx('confirm');
+    startFight(select.p1, select.p2, stageSel);
+    return;
+  }
+  STAGES.forEach((_, i) => {
+    const r = stageCardRect(i);
+    mouseOver(r);
+    if (!mouseClickedIn(r)) return;
+    if (stageSel === i) {
+      playSfx('confirm');
+      startFight(select.p1, select.p2, stageSel);
+    } else {
+      stageSel = i;
+      playSfx('select');
+    }
+  });
+}
+
+function drawStageSelect() {
+  paintStage(stageSel); // el escenario elegido de fondo, a tamaño completo
+  ctx.fillStyle = 'rgba(13, 13, 25, 0.7)';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 44px "Segoe UI", sans-serif';
+  ctx.fillText('ELIGE EL ESCENARIO', W / 2, 90);
+
+  STAGES.forEach((s, i) => {
+    const r = stageCardRect(i);
+    // miniatura del escenario dentro de la carta
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(r.x, r.y, r.w, r.h, 10);
+    ctx.clip();
+    ctx.translate(r.x, r.y);
+    ctx.scale(r.w / W, r.h / H);
+    paintStage(i);
+    ctx.restore();
+
+    ctx.strokeStyle = stageSel === i ? '#fbbf24' : '#3f3a4d';
+    ctx.lineWidth = stageSel === i ? 5 : 2;
+    ctx.beginPath();
+    ctx.roundRect(r.x, r.y, r.w, r.h, 10);
+    ctx.stroke();
+
+    ctx.fillStyle = stageSel === i ? '#fbbf24' : '#d1d5db';
+    ctx.font = 'bold 20px "Segoe UI", sans-serif';
+    ctx.fillText(s.name, r.x + r.w / 2, r.y + r.h + 32);
+  });
+
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = '18px "Segoe UI", sans-serif';
+  const who = Net.mode === 'guest' ? 'Elige el anfitrión...' : 'A/D o ←/→ para moverte · F o ENTER para pelear · o haz clic';
+  ctx.fillText(who, W / 2, 460);
+
+  drawButton(SELECT_BACK, '← Personajes (ESC)');
 }
 
 function drawSelect() {
@@ -535,9 +623,13 @@ function updateFight() {
     return;
   }
 
-  // hitstop: el mundo se congela unos frames tras un impacto
+  // hitstop: el mundo se congela unos frames tras un impacto, pero las
+  // pulsaciones de golpe siguen entrando al buffer (que no se pierdan)
   if (game.hitstop > 0) {
     game.hitstop--;
+    game.fighters.forEach((f) => {
+      if (f.state !== 'ko' && f.input.pressed(f.controls.attack)) f.attackBuffer = 12;
+    });
     return;
   }
 
@@ -615,7 +707,7 @@ function updateKO() {
     return;
   }
 
-  if (anyPressed('r') || mouseClickedIn(KO_REMATCH)) startFight(game.p1Index, game.p2Index);
+  if (anyPressed('r') || mouseClickedIn(KO_REMATCH)) startFight(game.p1Index, game.p2Index, game.stageIndex);
   else if (anyPressed('enter') || mouseClickedIn(KO_SELECT)) startSelect();
   else if (keyPressed['escape'] || mouseClickedIn(KO_MENU)) backToMenu();
 }
@@ -644,7 +736,14 @@ function drawKO() {
 }
 
 // --- Escenario y HUD ---
-function drawStage() {
+// Pinta el escenario i a pantalla completa (imagen si la tiene,
+// o la ciudad nocturna dibujada por código).
+function paintStage(i) {
+  const img = StageArt.images[i];
+  if (img) {
+    ctx.drawImage(img, 0, 0, W, H);
+    return;
+  }
   const sky = ctx.createLinearGradient(0, 0, 0, H);
   sky.addColorStop(0, '#1e1b4b');
   sky.addColorStop(0.7, '#4c1d95');
@@ -668,6 +767,11 @@ function drawStage() {
   ctx.fillRect(0, FLOOR_Y, W, H - FLOOR_Y);
   ctx.fillStyle = '#3f3a4d';
   ctx.fillRect(0, FLOOR_Y, W, 6);
+}
+
+// El escenario de la partida en curso (o el primero, en los menús).
+function drawStage() {
+  paintStage(game && game.stageIndex !== undefined ? game.stageIndex : 0);
 }
 
 function drawHealthBar(f, x, mirrored) {
@@ -695,6 +799,17 @@ function drawHealthBar(f, x, mirrored) {
   miniBar(55, 1 - f.specialCooldown / f.def.special.cooldownFrames, '#fbbf24');
   miniBar(65, 1 - f.dashCooldown / DASH_COOLDOWN, '#22d3ee');
 
+  // tensión de la guardia: aparece al bloquear, si se llena te la rompen
+  if (f.blockStrain > 0) {
+    const bw = barW * 0.6;
+    const bx = mirrored ? x + barW - bw : x;
+    ctx.fillStyle = '#111';
+    ctx.fillRect(bx, 75, bw, 5);
+    ctx.fillStyle = '#f87171';
+    const fw = bw * Math.min(1, f.blockStrain / GUARD_BREAK_AT);
+    ctx.fillRect(mirrored ? bx + bw - fw : bx, 75, fw, 5);
+  }
+
   ctx.fillStyle = '#fff';
   ctx.font = 'bold 18px "Segoe UI", sans-serif';
   ctx.textAlign = mirrored ? 'right' : 'left';
@@ -717,10 +832,12 @@ function buildSnapshot() {
   if (scene === 'select' && select) {
     snap.select = { p1: select.p1, p2: select.p2, p1Ready: select.p1Ready, p2Ready: select.p2Ready };
   }
+  if (scene === 'stage') snap.stageSel = stageSel;
   if ((scene === 'fight' || scene === 'ko') && game) {
     snap.game = {
       p1Index: game.p1Index,
       p2Index: game.p2Index,
+      stageIndex: game.stageIndex,
       timer: game.timer,
       intro: game.intro,
       koTimer: game.koTimer,
@@ -731,7 +848,8 @@ function buildSnapshot() {
         state: f.state, stateTimer: f.stateTimer, health: f.health,
         flash: f.flash, specialCooldown: f.specialCooldown,
         crouching: f.crouching, dashDir: f.dashDir, dashCooldown: f.dashCooldown,
-        reversedTimer: f.reversedTimer, shoutFx: f.shoutFx, comboStage: f.comboStage
+        reversedTimer: f.reversedTimer, shoutFx: f.shoutFx, comboStage: f.comboStage,
+        blockStrain: f.blockStrain, parryWindow: f.parryWindow, parryFx: f.parryFx
       })),
       projectiles: game.projectiles.map((p) => ({ x: p.x, y: p.y, vx: p.vx, age: p.age, color: p.color, kind: p.kind }))
     };
@@ -742,6 +860,7 @@ function buildSnapshot() {
 function applySnapshot(s) {
   scene = s.scene;
   if (s.select) select = s.select;
+  if (s.stageSel !== undefined) stageSel = s.stageSel;
   if (s.game) {
     if (!game || game.matchId !== s.matchId) {
       // partida nueva: crear los luchadores espejo
@@ -749,6 +868,7 @@ function applySnapshot(s) {
         matchId: s.matchId,
         p1Index: s.game.p1Index,
         p2Index: s.game.p2Index,
+        stageIndex: s.game.stageIndex || 0,
         fighters: [
           new Fighter(CHARACTERS[s.game.p1Index], 280, 1, P1_CONTROLS, localInput),
           new Fighter(CHARACTERS[s.game.p2Index], W - 280, -1, P2_CONTROLS, localInput)
@@ -782,6 +902,7 @@ function hostOrLocalTick() {
   else if (scene === 'join') updateJoin();
   else if (scene === 'lobby') updateLobby();
   else if (scene === 'select') updateSelect();
+  else if (scene === 'stage') updateStageSelect();
   else if (scene === 'fight') updateFight();
   else if (scene === 'ko') updateKO();
 
@@ -791,11 +912,12 @@ function hostOrLocalTick() {
   else if (scene === 'join') drawJoin();
   else if (scene === 'lobby') drawLobby();
   else if (scene === 'select') drawSelect();
+  else if (scene === 'stage') drawStageSelect();
   else if (scene === 'fight') drawFight();
   else if (scene === 'ko') drawKO();
 
   if (Net.mode === 'host' && Net.status === 'connected' &&
-      (scene === 'select' || scene === 'fight' || scene === 'ko')) {
+      (scene === 'select' || scene === 'stage' || scene === 'fight' || scene === 'ko')) {
     Net.sendState(buildSnapshot());
   }
   drawNetRoleHint();
@@ -839,6 +961,7 @@ function guestTick() {
   if (Net.lastState) applySnapshot(Net.lastState);
 
   if (scene === 'select' && select) drawSelect();
+  else if (scene === 'stage') drawStageSelect();
   else if ((scene === 'fight' || scene === 'ko') && game) {
     if (scene === 'fight') drawFight();
     else drawKO();
