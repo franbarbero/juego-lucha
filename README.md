@@ -23,6 +23,7 @@ Funciona con **WebRTC (PeerJS)**: los dos navegadores se conectan directamente e
 | Golpe                  | F o clic izquierdo | K         |
 | Especial               | G o clic derecho   | L         |
 
+- **Combos**: pulsa el golpe varias veces seguidas para encadenar hasta 4 ataques (cada uno con su animación). Los golpes intermedios apenas empujan, así el rival se queda en rango; el cuarto es un **remate** más fuerte que lo lanza por los aires. Si te pegan, tu cadena se corta.
 - El **dash** atraviesa al rival y esquiva proyectiles y gritos. Tiene su propio cooldown (la barra **cian** del HUD; la amarilla es el especial).
 - **Agacharse** encoge tu hitbox: los proyectiles pasan por encima. Puedes caminar y pegar bajo mientras estás agachado.
 - En la pantalla de KO: **R** = revancha, **ENTER** = volver a elegir personajes. El ratón también sirve para todos los menús.

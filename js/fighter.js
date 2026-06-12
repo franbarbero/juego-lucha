@@ -90,6 +90,8 @@ class Fighter {
     this.hitRegistered = false;  // para que cada golpe pegue una sola vez
     this.flash = 0;              // frames de parpadeo blanco al recibir daño
     this.jumpsUsed = 0;          // saltos gastados (máx. MAX_JUMPS)
+    this.comboStage = 0;         // golpe actual de la cadena (0..3)
+    this.comboWindow = 0;        // frames restantes para encadenar el siguiente
     this.crouching = false;
     this.dashCooldown = 0;
     this.dashDir = facing;
@@ -121,6 +123,7 @@ class Fighter {
     if (this.dashCooldown > 0) this.dashCooldown--;
     if (this.reversedTimer > 0) this.reversedTimer--;
     if (this.shoutFx > 0) this.shoutFx--;
+    if (this.comboWindow > 0 && --this.comboWindow === 0) this.comboStage = 0;
 
     if (this.state === 'ko') {
       this.applyPhysics();
@@ -135,10 +138,25 @@ class Fighter {
       if (this.stateTimer <= 10 && this.stateTimer >= 5 && !this.hitRegistered) {
         if (rectsOverlap(this.attackHitbox, opponent.hurtbox)) {
           this.hitRegistered = true;
-          opponent.takeHit(this.def.attack.damage, this.facing, game);
+          const finisher = this.comboStage === 3;
+          const mult = [1, 1, 1.25, 1.75][this.comboStage];
+          opponent.takeHit(
+            Math.round(this.def.attack.damage * mult), this.facing, game,
+            // los golpes intermedios apenas empujan (mantienen el combo);
+            // el remate lanza al rival por los aires
+            finisher ? { push: 12, lift: 7 } : { push: 3.5, lift: 2 }
+          );
         }
       }
-      if (--this.stateTimer <= 0) this.state = 'idle';
+      if (--this.stateTimer <= 0) {
+        this.state = 'idle';
+        if (this.comboStage < 3) {
+          this.comboWindow = 20; // margen para encadenar el siguiente golpe
+        } else {
+          this.comboStage = 0;   // tras el remate, la cadena empieza de cero
+          this.comboWindow = 0;
+        }
+      }
     } else if (this.state === 'dash') {
       // ráfaga horizontal sin gravedad; atraviesa todo (sin daño)
       this.vx = this.dashDir * DASH_SPEED;
@@ -198,11 +216,19 @@ class Fighter {
     }
 
     if (this.input.pressed(c.attack) && this.attackCooldown <= 0) {
+      // encadenar dentro de la ventana avanza la secuencia 1→2→3→4
+      this.comboStage = this.comboWindow > 0 ? Math.min(this.comboStage + 1, 3) : 0;
+      this.comboWindow = 0;
       this.state = 'attack';
-      this.stateTimer = 14;
+      this.stateTimer = this.comboStage > 0 ? 12 : 14; // los encadenados salen más rápido
       this.hitRegistered = false;
-      this.attackCooldown = this.def.attack.cooldownFrames;
-      playSfx('attack', this.def.voice);
+      // entre golpes de la cadena casi no hay espera; tras el remate, la completa
+      this.attackCooldown = this.comboStage === 3 ? this.def.attack.cooldownFrames + 10 : 8;
+      // el tono del golpe sube con cada eslabón del combo
+      playSfx('attack', {
+        base: this.def.voice.base * (1 + this.comboStage * 0.18),
+        wave: this.def.voice.wave
+      });
     }
 
     if (this.input.pressed(c.special) && this.specialCooldown <= 0) {
@@ -246,12 +272,17 @@ class Fighter {
     this.x = Math.max(STAGE_LEFT, Math.min(STAGE_RIGHT, this.x));
   }
 
-  takeHit(damage, dir, game) {
+  takeHit(damage, dir, game, kb) {
     if (this.state === 'ko') return;
+    const push = kb && kb.push !== undefined ? kb.push : 7;
+    const lift = kb && kb.lift !== undefined ? kb.lift : 5;
     this.health = Math.max(0, this.health - damage);
     this.flash = 8;
-    this.vx = dir * 7;
-    if (this.onGround) this.vy = -5;
+    this.vx = dir * push;
+    if (this.onGround) this.vy = -lift;
+    // recibir un golpe corta tu propia cadena de combo
+    this.comboStage = 0;
+    this.comboWindow = 0;
     if (this.health <= 0) {
       this.state = 'ko';
       this.vy = -8;

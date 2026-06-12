@@ -712,7 +712,7 @@ function buildSnapshot() {
         state: f.state, stateTimer: f.stateTimer, health: f.health,
         flash: f.flash, specialCooldown: f.specialCooldown,
         crouching: f.crouching, dashDir: f.dashDir, dashCooldown: f.dashCooldown,
-        reversedTimer: f.reversedTimer, shoutFx: f.shoutFx
+        reversedTimer: f.reversedTimer, shoutFx: f.shoutFx, comboStage: f.comboStage
       })),
       projectiles: game.projectiles.map((p) => ({ x: p.x, y: p.y, vx: p.vx, age: p.age, color: p.color, kind: p.kind }))
     };

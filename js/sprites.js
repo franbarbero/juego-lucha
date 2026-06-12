@@ -40,12 +40,13 @@ const Sprites = {
     }
   },
 
-  // Devuelve la imagen de la pose, la de idle1 si falta esa pose,
-  // o null si el personaje aún no tiene sprites (→ muñeco vectorial).
+  // Devuelve la imagen de la pose. Si falta, prueba con el frame 1 de
+  // la misma familia (attack3 → attack1), luego con idle1, y si no hay
+  // nada devuelve null (→ muñeco vectorial).
   get(def, pose) {
     const set = this.cache[def.name];
     if (!set) return null;
-    return set[pose] || set['idle1'] || null;
+    return set[pose] || set[pose.replace(/\d+$/, '1')] || set['idle1'] || null;
   },
 
   // ¿Existe exactamente esa pose? (sin contar el respaldo de idle1)
@@ -59,13 +60,8 @@ const Sprites = {
 function spritePoseFor(f) {
   const tick = Math.floor(performance.now() / 180) % 2;
   if (f.state === 'ko' || f.state === 'hit') return 'hurt';
-  if (f.state === 'attack') {
-    // animación de 4 fases sobre los 14 frames del golpe
-    if (f.stateTimer > 10) return 'attack1';
-    if (f.stateTimer > 7) return 'attack2';
-    if (f.stateTimer > 4) return 'attack3';
-    return 'attack4';
-  }
+  // cada golpe de la cadena de combo usa su propio frame: 1→2→3→4
+  if (f.state === 'attack') return 'attack' + (f.comboStage + 1);
   if (f.state === 'recover') return f.stateTimer > 7 ? 'special1' : 'special2';
   if (f.state === 'dash' || !f.onGround) return 'jump';
   if (f.crouching) return tick ? 'crouch2' : 'crouch1';
