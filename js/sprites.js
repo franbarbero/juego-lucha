@@ -60,10 +60,13 @@ const Sprites = {
 // Qué pose corresponde al estado actual de un luchador.
 function spritePoseFor(f) {
   const tick = Math.floor(performance.now() / 180) % 2;
-  if (f.state === 'ko' || f.state === 'hit' || f.state === 'stunned') return 'hurt';
-  // pose propia de guardia (block.png); si no existe cae a idle1, que
-  // junto al escudo dibujado se distingue bien del sprite de daño
-  if (f.state === 'block') return 'block';
+  if (f.state === 'ko') return 'hurt';
+  // recibir daño y el aturdido usan idle (el parpadeo blanco ya lo marca);
+  // cuando haya un sprite de daño propio, se cambia aquí
+  if (f.state === 'hit' || f.state === 'stunned') return tick ? 'idle2' : 'idle1';
+  // la pose HURT/BLOCK de la hoja es en realidad la guardia: se usa para
+  // bloquear, salvo que exista un block.png dedicado
+  if (f.state === 'block') return Sprites.exact(f.def, 'block') ? 'block' : 'hurt';
   // cada golpe de la cadena de combo usa su propio frame: 1→2→3→4
   if (f.state === 'attack') return 'attack' + (f.comboStage + 1);
   if (f.state === 'recover') return f.stateTimer > 12 ? 'special1' : 'special2';
