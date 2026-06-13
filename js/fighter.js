@@ -18,6 +18,7 @@ const DASH_FRAMES = 12;
 const DASH_COOLDOWN = 110;
 
 const MAX_JUMPS = 2; // doble salto
+const SHOUT_FX_FRAMES = 26; // duración de las ondas del grito
 // SPECIAL_DURATION se define en sprites.js (se carga antes), porque
 // spritePoseFor lo necesita; aquí solo lo usamos.
 
@@ -298,7 +299,7 @@ class Fighter {
         // onda expansiva frontal: daño + empujón enorme
         this.state = 'recover';
         this.stateTimer = SPECIAL_DURATION;
-        this.shoutFx = 26;
+        this.shoutFx = SHOUT_FX_FRAMES;
         const range = this.def.special.range;
         const box = {
           x: this.facing === 1 ? this.x : this.x - range,
@@ -439,13 +440,14 @@ class Fighter {
 
     // ondas del grito
     if (this.shoutFx > 0) {
-      const t = 22 - this.shoutFx;
-      ctx.strokeStyle = `rgba(255, 255, 255, ${this.shoutFx / 22})`;
+      const t = SHOUT_FX_FRAMES - this.shoutFx; // 0 → crece con el tiempo
+      ctx.strokeStyle = `rgba(255, 255, 255, ${this.shoutFx / SHOUT_FX_FRAMES})`;
       ctx.lineWidth = 3;
       const baseAngle = this.facing === 1 ? 0 : Math.PI;
       for (let i = 0; i < 3; i++) {
+        const radius = Math.max(0, 16 + t * 5 + i * 14);
         ctx.beginPath();
-        ctx.arc(this.x + this.facing * 28, this.y - 118, 16 + t * 5 + i * 14,
+        ctx.arc(this.x + this.facing * 28, this.y - 118, radius,
           baseAngle - 0.65, baseAngle + 0.65);
         ctx.stroke();
       }
