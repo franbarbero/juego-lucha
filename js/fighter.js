@@ -18,6 +18,7 @@ const DASH_FRAMES = 12;
 const DASH_COOLDOWN = 110;
 
 const MAX_JUMPS = 2; // doble salto
+const SPECIAL_DURATION = 36; // frames de la animación del especial (más larga = se aprecia)
 
 // Bloqueo: aguante máximo antes de la rotura de guardia, y frames
 // iniciales del bloqueo en los que un golpe recibido cuenta como parry.
@@ -169,10 +170,10 @@ class Fighter {
       if (!this.input.down(c.block)) this.state = 'idle';
     } else if (this.state === 'attack') {
       this.vx *= 0.85; // frenar la embestida del golpe poco a poco
-      // frames activos: tras 6 frames de preparación, 6 frames de impacto
-      const actFrom = this.swingDuration - 6;
-      const actTo = this.swingDuration - 12;
-      if (this.stateTimer <= actFrom && this.stateTimer >= actTo && !this.hitRegistered) {
+      // el frame de impacto empieza en el 50% del swing; la ventana activa
+      // son los primeros 6 frames de ese impacto (coincide con el sprite)
+      const strikeAt = this.swingDuration * 0.5;
+      if (this.stateTimer <= strikeAt && this.stateTimer >= strikeAt - 6 && !this.hitRegistered) {
         if (rectsOverlap(this.attackHitbox, opponent.hurtbox)) {
           this.hitRegistered = true;
           const finisher = this.comboStage === 3;
@@ -269,9 +270,9 @@ class Fighter {
       this.comboStage = this.comboWindow > 0 ? Math.min(this.comboStage + 1, 3) : 0;
       this.comboWindow = 0;
       this.state = 'attack';
-      // más largos que antes para que la animación se aprecie;
-      // los encadenados siguen saliendo algo más rápido
-      this.swingDuration = this.comboStage > 0 ? 16 : 20;
+      // más largos para que la animación de cada golpe se aprecie;
+      // los encadenados salen algo más rápido
+      this.swingDuration = this.comboStage > 0 ? 22 : 28;
       this.stateTimer = this.swingDuration;
       this.hitRegistered = false;
       this.vx = this.facing * 3; // pequeña embestida hacia delante
@@ -290,13 +291,13 @@ class Fighter {
       const type = this.def.special.type;
       if (type === 'projectile' || type === 'strings') {
         this.state = 'recover';
-        this.stateTimer = 24;
+        this.stateTimer = SPECIAL_DURATION;
         game.projectiles.push(new Projectile(this));
       } else if (type === 'shout') {
         // onda expansiva frontal: daño + empujón enorme
         this.state = 'recover';
-        this.stateTimer = 24;
-        this.shoutFx = 22;
+        this.stateTimer = SPECIAL_DURATION;
+        this.shoutFx = 26;
         const range = this.def.special.range;
         const box = {
           x: this.facing === 1 ? this.x : this.x - range,

@@ -68,20 +68,20 @@ function spritePoseFor(f) {
   if (f.state === 'stunned') return 'hurt1';
   if (f.state === 'block') return 'block';
   if (f.state === 'attack') {
-    // cada golpe del combo son 2 frames: anticipación → impacto
-    const sub = f.stateTimer > f.swingDuration * 0.55 ? 1 : 2;
+    // cada golpe del combo son 2 frames: anticipación → impacto (al 50%)
+    const sub = f.stateTimer > f.swingDuration * 0.5 ? 1 : 2;
     return 'attack' + (f.comboStage * 2 + sub);
   }
   if (f.state === 'recover') {
-    // el especial recorre sus 4 frames a lo largo de la animación (24f)
-    const idx = Math.min(3, Math.floor((24 - f.stateTimer) / 6));
+    // el especial recorre sus 4 frames a lo largo de la animación (36f)
+    const idx = Math.min(3, Math.floor((SPECIAL_DURATION - f.stateTimer) / (SPECIAL_DURATION / 4)));
     return 'special' + (idx + 1);
   }
   if (f.state === 'dash') return 'dash';
   if (!f.onGround) return f.vy < 0 ? 'jump1' : 'jump2'; // subiendo / cayendo
-  if (f.crouching) return (Math.floor(now / 200) % 2) ? 'crouch2' : 'crouch1';
-  if (f.vx !== 0) return 'walk' + (Math.floor(now / 90) % 6 + 1); // ciclo de 6
-  return 'idle' + (Math.floor(now / 200) % 4 + 1); // respiración de 4
+  if (f.crouching) return (Math.floor(now / 280) % 2) ? 'crouch2' : 'crouch1';
+  if (f.vx !== 0) return 'walk' + (Math.floor(now / 130) % 6 + 1); // ciclo de 6
+  return 'idle' + (Math.floor(now / 280) % 4 + 1); // respiración de 4
 }
 
 Sprites.loadAll();
