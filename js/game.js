@@ -877,9 +877,10 @@ function drawVictoryCinematic() {
   }
   ctx.restore();
 
-  // el ganador: special3 entrando, luego special4 como pose final épica
+  // el ganador entra con su pose de "build" y se congela en la "final"
   const reveal = Math.min(1, c / 14);          // 0→1 al aparecer
-  const pose = c < CINE_SP3 ? 'special3' : 'special4';
+  const pose = c < CINE_SP3 ? (win.def.victoryBuild || 'special3')
+                            : (win.def.victoryFinal || 'special4');
   const baseH = (win.def.spriteHeight || 320) * 1.25;
   const sh = baseH * (0.88 + 0.12 * reveal);   // leve zoom de entrada
   const floatY = Math.sin(performance.now() / 600) * 6;

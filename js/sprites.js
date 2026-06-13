@@ -18,7 +18,7 @@
 
 // Duración (en frames) de la animación del especial. La usa también
 // fighter.js (se carga después, así que la ve sin problemas).
-const SPECIAL_DURATION = 84;
+const SPECIAL_DURATION = 54;
 
 const SPRITE_POSES = [
   'idle1', 'idle2', 'idle3', 'idle4',

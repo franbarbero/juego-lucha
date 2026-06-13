@@ -44,6 +44,9 @@ const CHARACTERS = [
     title: 'El Titiritero',
     spriteFolder: 'img/barbero',
     spriteHeight: 460,  // alto del lienzo del sprite en pantalla (cuerpo ≈165px)
+    // poses de la victoria cinemática: entra con una y se congela en la otra
+    victoryBuild: 'special3',
+    victoryFinal: 'special4',  // el maestro de marionetas con sus títeres
     color: '#8b5cf6',
     skinColor: '#fcd9b8',
     hairColor: '#27272a',
@@ -66,6 +69,8 @@ const CHARACTERS = [
     title: 'La Voz del Pueblo',
     spriteFolder: 'img/meryg',
     spriteHeight: 426,  // alto del lienzo del sprite en pantalla (cuerpo ≈165px)
+    victoryBuild: 'special4',
+    victoryFinal: 'special3',  // el ángel de la justicia
     color: '#ec4899',
     skinColor: '#f3c6a5',
     hairColor: '#7c2d12',
