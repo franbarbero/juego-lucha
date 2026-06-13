@@ -457,11 +457,13 @@ function updateSelect() {
 }
 
 // --- Escena: selección de escenario (elige P1 / el host) ---
+// Carrusel: la carta seleccionada se centra y las demás flanquean.
+// stageScroll sigue a stageSel con suavizado para deslizar.
+let stageScroll = 0;
 const stageCardRect = (i) => {
   const cardW = 290;
   const gap = 36;
-  const total = STAGES.length * cardW + (STAGES.length - 1) * gap;
-  return { x: (W - total) / 2 + i * (cardW + gap), y: 170, w: cardW, h: 200 };
+  return { x: W / 2 - cardW / 2 + (i - stageScroll) * (cardW + gap), y: 170, w: cardW, h: 200 };
 };
 
 function updateStageSelect() {
@@ -469,11 +471,14 @@ function updateStageSelect() {
     startSelect();
     return;
   }
-  if (keyPressed['a'] || keyPressed['arrowleft']) {
+  const leftArrow = { x: 30, y: 250, w: 60, h: 60 };
+  const rightArrow = { x: W - 90, y: 250, w: 60, h: 60 };
+  mouseOver(leftArrow); mouseOver(rightArrow);
+  if (keyPressed['a'] || keyPressed['arrowleft'] || mouseClickedIn(leftArrow)) {
     stageSel = (stageSel + STAGES.length - 1) % STAGES.length;
     playSfx('select');
   }
-  if (keyPressed['d'] || keyPressed['arrowright']) {
+  if (keyPressed['d'] || keyPressed['arrowright'] || mouseClickedIn(rightArrow)) {
     stageSel = (stageSel + 1) % STAGES.length;
     playSfx('select');
   }
@@ -497,6 +502,10 @@ function updateStageSelect() {
 }
 
 function drawStageSelect() {
+  // deslizamiento suave del carrusel hacia la carta seleccionada
+  stageScroll += (stageSel - stageScroll) * 0.22;
+  if (Math.abs(stageScroll - stageSel) < 0.002) stageScroll = stageSel;
+
   paintStage(stageSel); // el escenario elegido de fondo, a tamaño completo
   ctx.fillStyle = 'rgba(13, 13, 25, 0.7)';
   ctx.fillRect(0, 0, W, H);
@@ -508,6 +517,7 @@ function drawStageSelect() {
 
   STAGES.forEach((s, i) => {
     const r = stageCardRect(i);
+    if (r.x + r.w < -20 || r.x > W + 20) return; // fuera de pantalla: no dibujar
     // miniatura del escenario dentro de la carta
     ctx.save();
     ctx.beginPath();
@@ -518,16 +528,28 @@ function drawStageSelect() {
     paintStage(i);
     ctx.restore();
 
-    ctx.strokeStyle = stageSel === i ? '#fbbf24' : '#3f3a4d';
-    ctx.lineWidth = stageSel === i ? 5 : 2;
+    const sel = stageSel === i;
+    ctx.strokeStyle = sel ? '#fbbf24' : '#3f3a4d';
+    ctx.lineWidth = sel ? 5 : 2;
     ctx.beginPath();
     ctx.roundRect(r.x, r.y, r.w, r.h, 10);
     ctx.stroke();
 
-    ctx.fillStyle = stageSel === i ? '#fbbf24' : '#d1d5db';
-    ctx.font = 'bold 20px "Segoe UI", sans-serif';
+    ctx.fillStyle = sel ? '#fbbf24' : '#d1d5db';
+    ctx.font = (sel ? 'bold ' : '') + '20px "Segoe UI", sans-serif';
     ctx.fillText(s.name, r.x + r.w / 2, r.y + r.h + 32);
   });
+
+  // flechas indicando que hay más escenarios a los lados
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 40px "Segoe UI", sans-serif';
+  if (STAGES.length > 1) {
+    ctx.fillText('‹', 60, 280);
+    ctx.fillText('›', W - 60, 280);
+  }
+  ctx.fillStyle = '#9ca3af';
+  ctx.font = '15px "Segoe UI", sans-serif';
+  ctx.fillText(`${stageSel + 1} / ${STAGES.length}`, W / 2, 410);
 
   ctx.fillStyle = '#9ca3af';
   ctx.font = '18px "Segoe UI", sans-serif';
