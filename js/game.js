@@ -13,7 +13,8 @@ const W = canvas.width;
 const H = canvas.height;
 
 const ROUND_SECONDS = 60;
-const INTRO_FRAMES = 210; // cuenta atrás 3-2-1-¡a pelear! (~3,5 s)
+const COUNTDOWN_MS = 3000; // 3-2-1 dura exactamente 3 s (por reloj, no frames)
+const GO_MS = 700;         // cuánto se muestra "¡A PELEAR!" tras la cuenta
 
 // --- Entrada de teclado ---
 // keys: teclas mantenidas. keyPressed: solo el frame en que se pulsan.
@@ -254,7 +255,13 @@ function startFight(p1Index, p2Index, stageIndex) {
     projectiles: [],
     timer: ROUND_SECONDS * 60,
     hitstop: 0, // frames de pausa dramática al conectar un golpe
-    intro: INTRO_FRAMES,
+    // cuenta atrás por reloj (independiente de los fps del monitor)
+    introStart: performance.now(),
+    introEl: 0,
+    fightStarted: false,
+    goStart: 0,
+    goEl: 0,
+    beepSeg: -1,
     winner: null,
     koTime: 0, // frames transcurridos desde el KO (dirige la cinemática)
     p1Index,
@@ -676,13 +683,19 @@ function drawSelect() {
 
 // --- Escena: pelea ---
 function updateFight() {
-  if (game.intro > 0) {
-    // pitidos de la cuenta atrás al entrar en cada fase
-    if (game.intro === 210 || game.intro === 158 || game.intro === 106) playSfx('count');
-    if (game.intro === 54) playSfx('fight');
-    game.intro--;
-    return;
+  if (!game.fightStarted) {
+    // cuenta atrás 3-2-1 por reloj: exactamente 3 segundos
+    game.introEl = performance.now() - game.introStart;
+    const seg = Math.min(2, Math.floor(game.introEl / 1000)); // 0,1,2 → 3,2,1
+    if (seg !== game.beepSeg) { game.beepSeg = seg; playSfx('count'); }
+    if (game.introEl >= COUNTDOWN_MS) {
+      game.fightStarted = true;
+      game.goStart = performance.now();
+      playSfx('fight');
+    }
+    return; // los luchadores quietos durante la cuenta
   }
+  game.goEl = performance.now() - game.goStart; // para el "¡A PELEAR!"
 
   // hitstop: el mundo se congela unos frames tras un impacto, pero las
   // pulsaciones de golpe siguen entrando al buffer (que no se pierdan)
@@ -740,46 +753,47 @@ function drawFight() {
   ctx.restore();
   drawHUD();
 
-  if (game.intro > 0) {
-    drawCountdown();
+  if (!game.fightStarted) {
+    drawCountdown(game.introEl);
+  } else if (game.goEl < GO_MS) {
+    drawGo(game.goEl);
   }
 }
 
-// Cuenta atrás de inicio: 3, 2, 1, ¡A PELEAR! Cada cifra crece y se
-// desvanece para dar el efecto típico de juego de lucha.
-function drawCountdown() {
-  const t = game.intro;
-  let label, phaseStart, phaseLen, big;
-  if (t > 158) { label = '3'; phaseStart = 210; phaseLen = 52; big = true; }
-  else if (t > 106) { label = '2'; phaseStart = 158; phaseLen = 52; big = true; }
-  else if (t > 54) { label = '1'; phaseStart = 106; phaseLen = 52; big = true; }
-  else { label = '¡A PELEAR!'; phaseStart = 54; phaseLen = 54; big = false; }
-
-  const into = phaseStart - t;            // frames dentro de la fase
-  const p = into / phaseLen;              // 0→1 progreso de la fase
-  const appear = Math.min(1, into / 8);   // aparición rápida
-  const alpha = 1 - Math.max(0, (p - 0.7) / 0.3) * 0.85; // se desvanece al final
+// Cuenta atrás 3-2-1 por tiempo (ms). Cada cifra ocupa 1 segundo, crece
+// al entrar y se desvanece al final, como en los juegos de lucha.
+function drawCountdown(el) {
+  const label = el < 1000 ? '3' : el < 2000 ? '2' : '1';
+  const into = (el % 1000) / 1000;        // 0→1 dentro del segundo
+  const appear = Math.min(1, into / 0.13); // aparición rápida
+  const alpha = 1 - Math.max(0, (into - 0.7) / 0.3) * 0.85;
 
   ctx.save();
   ctx.textAlign = 'center';
-  ctx.globalAlpha = alpha;
-  if (big) {
-    const size = 150 - appear * 40; // entra grande y se asienta
-    ctx.fillStyle = '#fbbf24';
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-    ctx.lineWidth = 6;
-    ctx.font = `bold ${size}px "Segoe UI", sans-serif`;
-    ctx.strokeText(label, W / 2, H / 2 + size * 0.32);
-    ctx.fillText(label, W / 2, H / 2 + size * 0.32);
-  } else {
-    const size = 56 + appear * 18;
-    ctx.fillStyle = '#fff';
-    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
-    ctx.lineWidth = 5;
-    ctx.font = `bold ${size}px "Segoe UI", sans-serif`;
-    ctx.strokeText('¡A PELEAR!', W / 2, H / 2 + 18);
-    ctx.fillText('¡A PELEAR!', W / 2, H / 2 + 18);
-  }
+  ctx.globalAlpha = Math.max(0, alpha);
+  const size = 150 - appear * 40; // entra grande y se asienta
+  ctx.fillStyle = '#fbbf24';
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 6;
+  ctx.font = `bold ${size}px "Segoe UI", sans-serif`;
+  ctx.strokeText(label, W / 2, H / 2 + size * 0.32);
+  ctx.fillText(label, W / 2, H / 2 + size * 0.32);
+  ctx.restore();
+}
+
+// "¡A PELEAR!" al arrancar el combate (no bloquea, se desvanece).
+function drawGo(el) {
+  const p = el / GO_MS;
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.globalAlpha = 1 - Math.max(0, (p - 0.5) / 0.5);
+  const size = 56 + Math.min(1, p / 0.15) * 18;
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+  ctx.lineWidth = 5;
+  ctx.font = `bold ${size}px "Segoe UI", sans-serif`;
+  ctx.strokeText('¡A PELEAR!', W / 2, H / 2 + 18);
+  ctx.fillText('¡A PELEAR!', W / 2, H / 2 + 18);
   ctx.restore();
 }
 
@@ -1030,7 +1044,9 @@ function buildSnapshot() {
       p2Index: game.p2Index,
       stageIndex: game.stageIndex,
       timer: game.timer,
-      intro: game.intro,
+      introEl: game.introEl,
+      fightStarted: game.fightStarted,
+      goEl: game.goEl,
       koTime: game.koTime,
       hitstop: game.hitstop,
       winner: game.winner ? game.fighters.indexOf(game.winner) : -1,
@@ -1069,7 +1085,9 @@ function applySnapshot(s) {
       };
     }
     game.timer = s.game.timer;
-    game.intro = s.game.intro;
+    game.introEl = s.game.introEl || 0;
+    game.fightStarted = !!s.game.fightStarted;
+    game.goEl = s.game.goEl || 0;
     game.koTime = s.game.koTime || 0;
     game.hitstop = s.game.hitstop || 0;
     game.winner = s.game.winner >= 0 ? game.fighters[s.game.winner] : null;
