@@ -408,8 +408,8 @@ class Fighter {
 
     ctx.save();
     ctx.translate(this.x, this.y);
-    if (this.state === 'ko') {
-      // tirado en el piso
+    // si no hay sprite de KO propio (ya tumbado), giramos el de pie 90°
+    if (this.state === 'ko' && !Sprites.exact(this.def, 'ko')) {
       ctx.rotate(this.facing * -Math.PI / 2);
       ctx.translate(0, 28);
     }

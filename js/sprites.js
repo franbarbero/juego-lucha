@@ -17,11 +17,13 @@
 // ============================================================
 
 const SPRITE_POSES = [
-  'idle1', 'idle2', 'crouch1', 'crouch2',
-  'walk1', 'walk2', 'walk3', 'walk4',
-  'attack1', 'attack2', 'attack3', 'attack4',
-  'special1', 'special2', 'jump', 'hurt',
-  'block' // opcional: pose de guardia; si falta se usa idle1 + el escudo
+  'idle1', 'idle2', 'idle3', 'idle4',
+  'walk1', 'walk2', 'walk3', 'walk4', 'walk5', 'walk6',
+  'crouch1', 'crouch2',
+  'attack1', 'attack2', 'attack3', 'attack4', 'attack5', 'attack6', 'attack7', 'attack8',
+  'special1', 'special2', 'special3', 'special4',
+  'jump1', 'jump2', 'dash',
+  'hurt1', 'hurt2', 'block', 'ko'
 ];
 
 const Sprites = {
@@ -59,21 +61,27 @@ const Sprites = {
 
 // Qué pose corresponde al estado actual de un luchador.
 function spritePoseFor(f) {
-  const tick = Math.floor(performance.now() / 180) % 2;
-  if (f.state === 'ko') return 'hurt';
-  // recibir daño y el aturdido usan idle (el parpadeo blanco ya lo marca);
-  // cuando haya un sprite de daño propio, se cambia aquí
-  if (f.state === 'hit' || f.state === 'stunned') return tick ? 'idle2' : 'idle1';
-  // la pose HURT/BLOCK de la hoja es en realidad la guardia: se usa para
-  // bloquear, salvo que exista un block.png dedicado
-  if (f.state === 'block') return Sprites.exact(f.def, 'block') ? 'block' : 'hurt';
-  // cada golpe de la cadena de combo usa su propio frame: 1→2→3→4
-  if (f.state === 'attack') return 'attack' + (f.comboStage + 1);
-  if (f.state === 'recover') return f.stateTimer > 12 ? 'special1' : 'special2';
-  if (f.state === 'dash' || !f.onGround) return 'jump';
-  if (f.crouching) return tick ? 'crouch2' : 'crouch1';
-  if (f.vx !== 0) return 'walk' + (Math.floor(performance.now() / 140) % 4 + 1);
-  return tick ? 'idle2' : 'idle1';
+  const now = performance.now();
+  if (f.state === 'ko') return 'ko';
+  // recibir daño: 2 frames; el aturdido usa el primero (con estrellitas aparte)
+  if (f.state === 'hit') return (Math.floor(now / 90) % 2) ? 'hurt2' : 'hurt1';
+  if (f.state === 'stunned') return 'hurt1';
+  if (f.state === 'block') return 'block';
+  if (f.state === 'attack') {
+    // cada golpe del combo son 2 frames: anticipación → impacto
+    const sub = f.stateTimer > f.swingDuration * 0.55 ? 1 : 2;
+    return 'attack' + (f.comboStage * 2 + sub);
+  }
+  if (f.state === 'recover') {
+    // el especial recorre sus 4 frames a lo largo de la animación (24f)
+    const idx = Math.min(3, Math.floor((24 - f.stateTimer) / 6));
+    return 'special' + (idx + 1);
+  }
+  if (f.state === 'dash') return 'dash';
+  if (!f.onGround) return f.vy < 0 ? 'jump1' : 'jump2'; // subiendo / cayendo
+  if (f.crouching) return (Math.floor(now / 200) % 2) ? 'crouch2' : 'crouch1';
+  if (f.vx !== 0) return 'walk' + (Math.floor(now / 90) % 6 + 1); // ciclo de 6
+  return 'idle' + (Math.floor(now / 200) % 4 + 1); // respiración de 4
 }
 
 Sprites.loadAll();

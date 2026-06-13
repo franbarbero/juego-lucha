@@ -20,7 +20,8 @@
 const STAGES = [
   { name: 'CIUDAD NOCTURNA', builtin: true },
   { name: "MCDONALD'S", image: 'img/stages/stage1.png', floorY: 444 },
-  { name: 'MC DÖNER', image: 'img/stages/stage2.png', floorY: 487 }
+  { name: 'MC DÖNER', image: 'img/stages/stage2.png', floorY: 487 },
+  { name: 'TULUM', image: 'img/stages/stage3.png', floorY: 487 }
 ];
 
 const StageArt = {

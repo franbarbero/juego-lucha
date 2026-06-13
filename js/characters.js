@@ -43,7 +43,7 @@ const CHARACTERS = [
     name: 'BARBERO',
     title: 'El Titiritero',
     spriteFolder: 'img/barbero',
-    spriteHeight: 329,  // alto del lienzo del sprite en pantalla (cuerpo ≈170px)
+    spriteHeight: 460,  // alto del lienzo del sprite en pantalla (cuerpo ≈165px)
     color: '#8b5cf6',
     skinColor: '#fcd9b8',
     hairColor: '#27272a',
@@ -65,7 +65,7 @@ const CHARACTERS = [
     name: 'MERYG',
     title: 'La Voz del Pueblo',
     spriteFolder: 'img/meryg',
-    spriteHeight: 315,  // alto del lienzo del sprite en pantalla (cuerpo ≈170px)
+    spriteHeight: 426,  // alto del lienzo del sprite en pantalla (cuerpo ≈165px)
     color: '#ec4899',
     skinColor: '#f3c6a5',
     hairColor: '#7c2d12',
