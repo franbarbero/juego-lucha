@@ -16,6 +16,10 @@
 //  Las imágenes deben mirar a la DERECHA; el motor las voltea.
 // ============================================================
 
+// Duración (en frames) de la animación del especial. La usa también
+// fighter.js (se carga después, así que la ve sin problemas).
+const SPECIAL_DURATION = 60;
+
 const SPRITE_POSES = [
   'idle1', 'idle2', 'idle3', 'idle4',
   'walk1', 'walk2', 'walk3', 'walk4', 'walk5', 'walk6',

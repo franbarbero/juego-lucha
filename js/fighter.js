@@ -18,7 +18,8 @@ const DASH_FRAMES = 12;
 const DASH_COOLDOWN = 110;
 
 const MAX_JUMPS = 2; // doble salto
-const SPECIAL_DURATION = 36; // frames de la animación del especial (más larga = se aprecia)
+// SPECIAL_DURATION se define en sprites.js (se carga antes), porque
+// spritePoseFor lo necesita; aquí solo lo usamos.
 
 // Bloqueo: aguante máximo antes de la rotura de guardia, y frames
 // iniciales del bloqueo en los que un golpe recibido cuenta como parry.

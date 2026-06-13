@@ -1000,14 +1000,32 @@ function guestTick() {
 
 // --- Bucle principal ---
 function loop() {
-  mouse.hoverUI = false;
-  if (Net.mode === 'guest') guestTick();
-  else hostOrLocalTick();
-  canvas.style.cursor = mouse.hoverUI ? 'pointer' : 'default';
-  keyPressed = {};
-  mouse.clicked = false;
-  mouse.moved = false;
-  if (Net.mode === 'host') Net.remoteKeyPressed = {};
+  try {
+    mouse.hoverUI = false;
+    if (Net.mode === 'guest') guestTick();
+    else hostOrLocalTick();
+    canvas.style.cursor = mouse.hoverUI ? 'pointer' : 'default';
+    keyPressed = {};
+    mouse.clicked = false;
+    mouse.moved = false;
+    if (Net.mode === 'host') Net.remoteKeyPressed = {};
+  } catch (err) {
+    // en vez de congelarse en silencio, mostrar el error en pantalla
+    console.error(err);
+    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#f87171';
+    ctx.font = 'bold 22px "Segoe UI", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Se ha producido un error', W / 2, H / 2 - 30);
+    ctx.fillStyle = '#fff';
+    ctx.font = '15px monospace';
+    ctx.fillText(String(err && err.message ? err.message : err), W / 2, H / 2 + 6);
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '14px "Segoe UI", sans-serif';
+    ctx.fillText('Pulsa F5 para reiniciar (y cuéntame este mensaje)', W / 2, H / 2 + 40);
+    return; // detener el bucle para no spamear
+  }
   requestAnimationFrame(loop);
 }
 
