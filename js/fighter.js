@@ -183,17 +183,10 @@ class Fighter {
         playSfx('jump', this.def.voice);
       }
     } else if (this.state === 'block') {
-      // puedes desplazarte (despacio) sin bajar la guardia
-      const c = this.controls;
-      const rev = this.reversedTimer > 0;
-      const blockSpeed = this.def.speed * 0.45;
+      // bloqueando estás clavado en el sitio (sin movimiento)
       this.vx = 0;
-      if (this.input.down(rev ? c.right : c.left)) this.vx = -blockSpeed;
-      if (this.input.down(rev ? c.left : c.right)) this.vx = blockSpeed;
-      if (this.vx > 0) this.facing = 1;
-      else if (this.vx < 0) this.facing = -1;
       if (this.parryWindow > 0) this.parryWindow--;
-      if (!this.input.down(c.block)) this.state = 'idle';
+      if (!this.input.down(this.controls.block)) this.state = 'idle';
     } else if (this.state === 'attack') {
       this.vx *= 0.85; // frenar la embestida del golpe poco a poco
       // el frame de impacto empieza en el 50% del swing; la ventana activa
