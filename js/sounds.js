@@ -86,9 +86,11 @@ const AudioEngine = {
     this.tone(440, 0.1, 'square', 0.07);
     this.tone(660, 0.15, 'square', 0.07, null, 0.1);
   },
+  count() { this.tone(440, 0.18, 'square', 0.1); }, // pitido de cuenta atrás
   fight() {
     this.tone(220, 0.12, 'sawtooth', 0.12, 440);
     this.tone(440, 0.25, 'sawtooth', 0.12, 880, 0.12);
+    this.tone(660, 0.3, 'square', 0.1, 990, 0.1);
   },
   victory() {
     this.tone(523, 0.12, 'square', 0.08, null, 0);

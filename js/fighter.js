@@ -7,11 +7,12 @@
 // Gravedad asimétrica estilo juego de lucha: subes flotando, caes con peso,
 // y "flotas" un instante en el punto más alto (apex hang) para que el salto
 // tenga sensación y control.
-const GRAVITY_RISE = 0.62;   // mientras subes (arco amplio)
-const GRAVITY_FALL = 0.95;   // al caer (más peso, caída más rápida)
-const APEX_VY = 2.4;         // |vy| por debajo del cual estás "en la cima"
-const APEX_FACTOR = 0.5;     // gravedad reducida en la cima (hang time)
+const GRAVITY_RISE = 0.46;   // mientras subes (suave: arco alto y flotante)
+const GRAVITY_FALL = 0.72;   // al caer (algo más de peso, pero sin ser brusco)
+const APEX_VY = 2.2;         // |vy| por debajo del cual estás "en la cima"
+const APEX_FACTOR = 0.55;    // gravedad reducida en la cima (hang time)
 const PREJUMP_FRAMES = 4;    // anticipación agachado antes de despegar
+const AIR_CONTROL = 0.2;     // capacidad de redirigir en el aire (0 nada, 1 total)
 const DEFAULT_FLOOR_Y = 490;
 let FLOOR_Y = DEFAULT_FLOOR_Y; // cada escenario puede tener su línea de suelo
 const STAGE_LEFT = 50;
@@ -257,9 +258,11 @@ class Fighter {
       else if (this.vx < 0) this.facing = -1;
       this.jumpsUsed = 0;
     } else {
-      // en el aire: el salto está comprometido; solo una leve deriva
-      const target = wantLeft ? -this.def.speed : wantRight ? this.def.speed : this.vx;
-      this.vx += (target - this.vx) * 0.06;
+      // en el aire: puedes redirigir libremente (primer salto y doble salto)
+      const target = wantLeft ? -this.def.speed : wantRight ? this.def.speed : 0;
+      this.vx += (target - this.vx) * AIR_CONTROL;
+      if (this.vx > 0.2) this.facing = 1;
+      else if (this.vx < -0.2) this.facing = -1;
     }
 
     // bloquear: mantén pulsado para cubrirte; los primeros frames son parry
@@ -491,20 +494,6 @@ class Fighter {
           baseAngle - 0.65, baseAngle + 0.65);
         ctx.stroke();
       }
-    }
-
-    // escudo de bloqueo (dorado en la ventana de parry; enrojece con la tensión)
-    if (this.state === 'block') {
-      const strainPct = this.blockStrain / GUARD_BREAK_AT;
-      ctx.strokeStyle = this.parryWindow > 0 ? '#fde047'
-        : strainPct > 0.66 ? '#f87171'
-        : strainPct > 0.33 ? '#fbbf24'
-        : 'rgba(96, 165, 250, 0.9)';
-      ctx.lineWidth = 5;
-      const base = this.facing === 1 ? 0 : Math.PI;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y - 75, 52, base - 0.9, base + 0.9);
-      ctx.stroke();
     }
 
     // destello del parry: anillo dorado expandiéndose

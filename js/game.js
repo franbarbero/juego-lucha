@@ -13,6 +13,7 @@ const W = canvas.width;
 const H = canvas.height;
 
 const ROUND_SECONDS = 60;
+const INTRO_FRAMES = 210; // cuenta atrás 3-2-1-¡a pelear! (~3,5 s)
 
 // --- Entrada de teclado ---
 // keys: teclas mantenidas. keyPressed: solo el frame en que se pulsan.
@@ -102,6 +103,29 @@ function mouseClickedIn(r) {
   return mouse.clicked && mouse.x >= r.x && mouse.x <= r.x + r.w && mouse.y >= r.y && mouse.y <= r.y + r.h;
 }
 
+// Copiar texto al portapapeles. Usa la API moderna y, si no está
+// disponible (p. ej. abierto como archivo local), un textarea oculto.
+let copyFeedback = 0; // frames mostrando "¡Copiado!"
+function copyText(text) {
+  const ok = () => { copyFeedback = 110; };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(ok).catch(() => fallbackCopy(text, ok));
+  } else {
+    fallbackCopy(text, ok);
+  }
+}
+function fallbackCopy(text, ok) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { if (document.execCommand('copy')) ok(); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
 // Botón clicable estándar (se resalta al pasar el ratón por encima).
 function drawButton(r, label, accent) {
   const hover = mouseOver(r);
@@ -126,6 +150,7 @@ const selectCardRect = (i) => {
   const total = CHARACTERS.length * cardW + (CHARACTERS.length - 1) * gap;
   return { x: (W - total) / 2 + i * (cardW + gap), y: 130, w: cardW, h: 270 };
 };
+const LOBBY_COPY = { x: W / 2 - 120, y: 380, w: 240, h: 44 };
 const LOBBY_CANCEL = { x: W / 2 - 110, y: 470, w: 220, h: 40 };
 const JOIN_GO = { x: W / 2 - 110, y: 360, w: 220, h: 44 };
 const JOIN_BACK = { x: W / 2 - 110, y: 420, w: 220, h: 40 };
@@ -229,7 +254,7 @@ function startFight(p1Index, p2Index, stageIndex) {
     projectiles: [],
     timer: ROUND_SECONDS * 60,
     hitstop: 0, // frames de pausa dramática al conectar un golpe
-    intro: 110,
+    intro: INTRO_FRAMES,
     winner: null,
     koTime: 0, // frames transcurridos desde el KO (dirige la cinemática)
     p1Index,
@@ -370,6 +395,10 @@ function drawJoin() {
 
 // --- Escena: sala de espera (host) ---
 function updateLobby() {
+  if (Net.status === 'waiting' && (mouseClickedIn(LOBBY_COPY) || keyPressed['c'])) {
+    copyText(Net.code);
+    playSfx('select');
+  }
   if (keyPressed['escape'] || mouseClickedIn(LOBBY_CANCEL)) {
     Net.reset();
     startMenu();
@@ -392,13 +421,15 @@ function drawLobby(message) {
     ctx.fillText('Creando sala...', W / 2, H / 2 - 20);
   } else if (Net.status === 'waiting') {
     ctx.font = '26px "Segoe UI", sans-serif';
-    ctx.fillText('Comparte este código con tu amigo:', W / 2, 200);
+    ctx.fillText('Comparte este código con tu amigo:', W / 2, 175);
     ctx.fillStyle = '#fbbf24';
-    ctx.font = 'bold 110px "Segoe UI", sans-serif';
-    ctx.fillText(Net.code.split('').join(' '), W / 2, 330);
+    ctx.font = 'bold 104px "Segoe UI", sans-serif';
+    ctx.fillText(Net.code.split('').join(' '), W / 2, 300);
+    // botón de copiar (con feedback "¡Copiado!")
+    drawButton(LOBBY_COPY, copyFeedback > 0 ? '✓ ¡Copiado!' : '⧉ Copiar código', copyFeedback > 0);
     ctx.fillStyle = '#9ca3af';
     ctx.font = '20px "Segoe UI", sans-serif';
-    ctx.fillText('Esperando a que se una... (tú serás el Jugador 1)', W / 2, 400);
+    ctx.fillText('Esperando a que se una... (tú serás el Jugador 1)', W / 2, 450);
   }
 
   drawButton(LOBBY_CANCEL, 'Cancelar (ESC)');
@@ -410,7 +441,7 @@ function drawNetRoleHint() {
   ctx.textAlign = 'center';
   ctx.fillStyle = 'rgba(255,255,255,0.45)';
   ctx.font = '14px "Segoe UI", sans-serif';
-  const role = Net.mode === 'host' ? 'Eres P1 (WASD + F/G)' : 'Eres P2 (WASD+F/G o flechas+K/L)';
+  const role = Net.mode === 'host' ? 'Eres P1' : 'Eres P2';
   ctx.fillText(`Sala ${Net.code} · ${role}`, W / 2, H - 12);
 }
 
@@ -646,8 +677,10 @@ function drawSelect() {
 // --- Escena: pelea ---
 function updateFight() {
   if (game.intro > 0) {
+    // pitidos de la cuenta atrás al entrar en cada fase
+    if (game.intro === 210 || game.intro === 158 || game.intro === 106) playSfx('count');
+    if (game.intro === 54) playSfx('fight');
     game.intro--;
-    if (game.intro === 40) playSfx('fight');
     return;
   }
 
@@ -708,11 +741,46 @@ function drawFight() {
   drawHUD();
 
   if (game.intro > 0) {
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 64px "Segoe UI", sans-serif';
-    ctx.fillText(game.intro > 40 ? '¿LISTOS?' : '¡PELEA!', W / 2, H / 2 - 20);
+    drawCountdown();
   }
+}
+
+// Cuenta atrás de inicio: 3, 2, 1, ¡A PELEAR! Cada cifra crece y se
+// desvanece para dar el efecto típico de juego de lucha.
+function drawCountdown() {
+  const t = game.intro;
+  let label, phaseStart, phaseLen, big;
+  if (t > 158) { label = '3'; phaseStart = 210; phaseLen = 52; big = true; }
+  else if (t > 106) { label = '2'; phaseStart = 158; phaseLen = 52; big = true; }
+  else if (t > 54) { label = '1'; phaseStart = 106; phaseLen = 52; big = true; }
+  else { label = '¡A PELEAR!'; phaseStart = 54; phaseLen = 54; big = false; }
+
+  const into = phaseStart - t;            // frames dentro de la fase
+  const p = into / phaseLen;              // 0→1 progreso de la fase
+  const appear = Math.min(1, into / 8);   // aparición rápida
+  const alpha = 1 - Math.max(0, (p - 0.7) / 0.3) * 0.85; // se desvanece al final
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.globalAlpha = alpha;
+  if (big) {
+    const size = 150 - appear * 40; // entra grande y se asienta
+    ctx.fillStyle = '#fbbf24';
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 6;
+    ctx.font = `bold ${size}px "Segoe UI", sans-serif`;
+    ctx.strokeText(label, W / 2, H / 2 + size * 0.32);
+    ctx.fillText(label, W / 2, H / 2 + size * 0.32);
+  } else {
+    const size = 56 + appear * 18;
+    ctx.fillStyle = '#fff';
+    ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+    ctx.lineWidth = 5;
+    ctx.font = `bold ${size}px "Segoe UI", sans-serif`;
+    ctx.strokeText('¡A PELEAR!', W / 2, H / 2 + 18);
+    ctx.fillText('¡A PELEAR!', W / 2, H / 2 + 18);
+  }
+  ctx.restore();
 }
 
 // --- Escena: KO / victoria cinemática ---
@@ -1097,6 +1165,7 @@ function guestTick() {
 // --- Bucle principal ---
 function loop() {
   try {
+    if (copyFeedback > 0) copyFeedback--;
     mouse.hoverUI = false;
     if (Net.mode === 'guest') guestTick();
     else hostOrLocalTick();

@@ -49,7 +49,7 @@ const CHARACTERS = [
     hairColor: '#27272a',
     maxHealth: 100,
     speed: 4.9,
-    jumpPower: 15,
+    jumpPower: 16,
     attack: { damage: 5, range: 72, cooldownFrames: 24 },
     special: {
       type: 'strings',
@@ -71,7 +71,7 @@ const CHARACTERS = [
     hairColor: '#7c2d12',
     maxHealth: 115,
     speed: 4.6,
-    jumpPower: 14,
+    jumpPower: 15,
     attack: { damage: 7, range: 65, cooldownFrames: 26 },
     special: {
       type: 'shout',
