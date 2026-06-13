@@ -78,9 +78,9 @@ function spritePoseFor(f) {
     return 'attack' + (f.comboStage * 2 + sub);
   }
   if (f.state === 'recover') {
-    // el especial recorre sus 4 frames a lo largo de la animación (36f)
-    const idx = Math.min(3, Math.floor((SPECIAL_DURATION - f.stateTimer) / (SPECIAL_DURATION / 4)));
-    return 'special' + (idx + 1);
+    // en combate el especial usa solo 2 frames (special1→special2);
+    // special3 y special4 se reservan para la victoria cinemática
+    return f.stateTimer > SPECIAL_DURATION * 0.5 ? 'special1' : 'special2';
   }
   if (f.state === 'dash') return 'dash';
   if (!f.onGround) return f.vy < 0 ? 'jump1' : 'jump2'; // subiendo / cayendo

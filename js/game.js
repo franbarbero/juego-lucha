@@ -129,9 +129,11 @@ const selectCardRect = (i) => {
 const LOBBY_CANCEL = { x: W / 2 - 110, y: 470, w: 220, h: 40 };
 const JOIN_GO = { x: W / 2 - 110, y: 360, w: 220, h: 44 };
 const JOIN_BACK = { x: W / 2 - 110, y: 420, w: 220, h: 40 };
-const KO_REMATCH = { x: W / 2 - 320, y: H / 2 + 48, w: 300, h: 46 };
-const KO_SELECT = { x: W / 2 + 20, y: H / 2 + 48, w: 300, h: 46 };
-const KO_MENU = { x: W / 2 - 150, y: H / 2 + 104, w: 300, h: 40 };
+// botones de fin de combate, en una fila al borde inferior (no tapan
+// al ganador durante la cinemática de victoria)
+const KO_REMATCH = { x: W / 2 - 396, y: H - 58, w: 250, h: 42 };
+const KO_SELECT = { x: W / 2 - 125, y: H - 58, w: 250, h: 42 };
+const KO_MENU = { x: W / 2 + 146, y: H - 58, w: 250, h: 42 };
 const SELECT_BACK = { x: 24, y: H - 64, w: 190, h: 40 };
 
 // Salir al menú principal (cerrando la sala si estamos online).
@@ -229,12 +231,12 @@ function startFight(p1Index, p2Index, stageIndex) {
     hitstop: 0, // frames de pausa dramática al conectar un golpe
     intro: 110,
     winner: null,
-    koTimer: 0,
+    koTime: 0, // frames transcurridos desde el KO (dirige la cinemática)
     p1Index,
     p2Index,
     onKO(loser) {
       this.winner = this.fighters.find((f) => f !== loser);
-      this.koTimer = 50;
+      this.koTime = 0;
       scene = 'ko';
     }
   };
@@ -663,7 +665,7 @@ function updateFight() {
   if (game.timer === 0) {
     const [a, b] = game.fighters;
     game.winner = a.health === b.health ? null : (a.health > b.health ? a : b);
-    game.koTimer = 0;
+    game.koTime = 0;
     scene = 'ko';
     return;
   }
@@ -713,52 +715,146 @@ function drawFight() {
   }
 }
 
-// --- Escena: KO / fin de ronda ---
+// --- Escena: KO / victoria cinemática ---
+const KO_IMPACT = 55;   // frames de impacto/caída antes de la cinemática
+const CINE_SP3 = 46;    // frames mostrando special3 (entrada épica)
+const CINE_BUTTONS = 34; // tras pasar a special4, aparecen los botones
+
+// ¿Se puede ya interactuar con los botones de fin de combate?
+function victoryReady() {
+  return !game.winner || game.koTime > KO_IMPACT + CINE_SP3 + CINE_BUTTONS;
+}
+
 function updateKO() {
   // el hitstop del golpe de KO también congela la caída un instante
   if (game.hitstop > 0) {
     game.hitstop--;
     return;
   }
-  // el perdedor cae y el ganador puede dar su vuelta de la victoria
-  const [f1, f2] = game.fighters;
-  f1.update(f2, game);
-  f2.update(f1, game);
-  game.projectiles.forEach((p) => p.update(game));
-  game.projectiles = game.projectiles.filter((p) => p.alive);
+  game.koTime++;
 
-  if (game.koTimer > 0) {
-    game.koTimer--;
-    if (game.koTimer === 0) playSfx('victory');
+  // fase de impacto: el perdedor cae con física normal
+  if (game.koTime <= KO_IMPACT) {
+    const [f1, f2] = game.fighters;
+    f1.update(f2, game);
+    f2.update(f1, game);
+    game.projectiles.forEach((p) => p.update(game));
+    game.projectiles = game.projectiles.filter((p) => p.alive);
     return;
   }
+  // arranque de la cinemática: grito de victoria
+  if (game.koTime === KO_IMPACT + 1 && game.winner) playSfx('victory');
 
-  if (anyPressed('r') || mouseClickedIn(KO_REMATCH)) startFight(game.p1Index, game.p2Index, game.stageIndex);
-  else if (anyPressed('enter') || mouseClickedIn(KO_SELECT)) startSelect();
-  else if (keyPressed['escape'] || mouseClickedIn(KO_MENU)) backToMenu();
+  if (victoryReady()) {
+    if (anyPressed('r') || mouseClickedIn(KO_REMATCH)) startFight(game.p1Index, game.p2Index, game.stageIndex);
+    else if (anyPressed('enter') || mouseClickedIn(KO_SELECT)) startSelect();
+    else if (keyPressed['escape'] || mouseClickedIn(KO_MENU)) backToMenu();
+  }
+}
+
+// Dibuja un sprite estático de un personaje centrado en (cx) con los
+// pies en feetY y altura sh (para la cinemática de victoria).
+function drawPoseSprite(def, pose, cx, feetY, sh) {
+  const sprite = Sprites.get(def, pose);
+  if (!sprite) return;
+  const sw = sh * sprite.width / sprite.height;
+  ctx.drawImage(sprite, cx - sw / 2, feetY - sh, sw, sh);
 }
 
 function drawKO() {
-  drawFight();
-  if (game.koTimer > 0) return;
-
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
-  ctx.fillRect(0, H / 2 - 130, W, 290);
-
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 56px "Segoe UI", sans-serif';
-  if (game.winner) {
-    ctx.fillText(`¡${game.winner.def.name} GANA!`, W / 2, H / 2 - 35);
-    ctx.fillStyle = '#fbbf24';
-    ctx.font = 'italic 26px "Segoe UI", sans-serif';
-    ctx.fillText(`"${game.winner.def.winPhrase}"`, W / 2, H / 2 + 15);
-  } else {
-    ctx.fillText('¡EMPATE!', W / 2, H / 2 - 20);
+  // fase de impacto: vista normal del combate con el perdedor cayendo
+  if (game.winner && game.koTime <= KO_IMPACT) {
+    drawFight();
+    return;
   }
-  drawButton(KO_REMATCH, 'REVANCHA (R)', true);
-  drawButton(KO_SELECT, 'ELEGIR PERSONAJES (ENTER)');
-  drawButton(KO_MENU, 'MENÚ PRINCIPAL (ESC)');
+  if (!game.winner) {
+    // empate: sin cinemática
+    drawFight();
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0, H / 2 - 130, W, 290);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 56px "Segoe UI", sans-serif';
+    ctx.fillText('¡EMPATE!', W / 2, H / 2 - 20);
+    drawButton(KO_REMATCH, 'REVANCHA (R)', true);
+    drawButton(KO_SELECT, 'ELEGIR PERSONAJES (ENTER)');
+    drawButton(KO_MENU, 'MENÚ PRINCIPAL (ESC)');
+    return;
+  }
+  drawVictoryCinematic();
+}
+
+function drawVictoryCinematic() {
+  const win = game.winner;
+  const c = game.koTime - KO_IMPACT; // frames desde el inicio de la cinemática
+
+  // fondo: escenario muy oscurecido
+  paintStage(game.stageIndex);
+  ctx.fillStyle = 'rgba(8, 6, 16, 0.82)';
+  ctx.fillRect(0, 0, W, H);
+
+  // rayos giratorios del color del personaje detrás del ganador
+  ctx.save();
+  ctx.translate(W / 2, H * 0.52);
+  ctx.rotate(performance.now() / 2600);
+  for (let i = 0; i < 18; i++) {
+    ctx.rotate((Math.PI * 2) / 18);
+    ctx.fillStyle = win.def.color + '22';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(820, -42);
+    ctx.lineTo(820, 42);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // el ganador: special3 entrando, luego special4 como pose final épica
+  const reveal = Math.min(1, c / 14);          // 0→1 al aparecer
+  const pose = c < CINE_SP3 ? 'special3' : 'special4';
+  const baseH = (win.def.spriteHeight || 320) * 1.25;
+  const sh = baseH * (0.88 + 0.12 * reveal);   // leve zoom de entrada
+  const floatY = Math.sin(performance.now() / 600) * 6;
+  ctx.save();
+  ctx.globalAlpha = reveal;
+  drawPoseSprite(win.def, pose, W / 2, H * 0.96 + floatY, sh);
+  ctx.restore();
+  ctx.globalAlpha = 1;
+
+  // destello al cambiar a special4
+  if (c >= CINE_SP3 && c < CINE_SP3 + 8) {
+    ctx.fillStyle = `rgba(255,255,255,${0.5 * (1 - (c - CINE_SP3) / 8)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // textos: nombre y frase aparecen con la pose final
+  ctx.textAlign = 'center';
+  if (c > 6) {
+    const a = Math.min(1, (c - 6) / 16);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#fbbf24';
+    ctx.font = 'bold 30px "Segoe UI", sans-serif';
+    ctx.fillText('VICTORIA', W / 2, 70);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 62px "Segoe UI", sans-serif';
+    ctx.fillText(win.def.name, W / 2, 130);
+    ctx.globalAlpha = 1;
+  }
+  if (c > CINE_SP3) {
+    const a = Math.min(1, (c - CINE_SP3) / 16);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = '#fde047';
+    ctx.font = 'italic 28px "Segoe UI", sans-serif';
+    ctx.fillText(`"${win.def.winPhrase}"`, W / 2, 180);
+    ctx.globalAlpha = 1;
+  }
+
+  // botones cuando la cinemática ha asentado
+  if (victoryReady()) {
+    drawButton(KO_REMATCH, 'REVANCHA (R)', true);
+    drawButton(KO_SELECT, 'ELEGIR PERSONAJES (ENTER)');
+    drawButton(KO_MENU, 'MENÚ PRINCIPAL (ESC)');
+  }
 }
 
 // --- Escenario y HUD ---
@@ -866,7 +962,7 @@ function buildSnapshot() {
       stageIndex: game.stageIndex,
       timer: game.timer,
       intro: game.intro,
-      koTimer: game.koTimer,
+      koTime: game.koTime,
       hitstop: game.hitstop,
       winner: game.winner ? game.fighters.indexOf(game.winner) : -1,
       fighters: game.fighters.map((f) => ({
@@ -905,7 +1001,7 @@ function applySnapshot(s) {
     }
     game.timer = s.game.timer;
     game.intro = s.game.intro;
-    game.koTimer = s.game.koTimer;
+    game.koTime = s.game.koTime || 0;
     game.hitstop = s.game.hitstop || 0;
     game.winner = s.game.winner >= 0 ? game.fighters[s.game.winner] : null;
     s.game.fighters.forEach((fd, i) => Object.assign(game.fighters[i], fd));
@@ -965,7 +1061,7 @@ function guestTick() {
   // salir al menú: ESC siempre, o clic en los botones de volver
   const clickedBack =
     (scene === 'select' && mouseClickedIn(SELECT_BACK)) ||
-    (scene === 'ko' && game && game.koTimer === 0 && mouseClickedIn(KO_MENU));
+    (scene === 'ko' && game && victoryReady() && mouseClickedIn(KO_MENU));
   if (keyPressed['escape'] || clickedBack) {
     Net.reset();
     startMenu();
