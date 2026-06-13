@@ -18,7 +18,7 @@
 
 // Duración (en frames) de la animación del especial. La usa también
 // fighter.js (se carga después, así que la ve sin problemas).
-const SPECIAL_DURATION = 60;
+const SPECIAL_DURATION = 84;
 
 const SPRITE_POSES = [
   'idle1', 'idle2', 'idle3', 'idle4',
@@ -71,6 +71,7 @@ function spritePoseFor(f) {
   if (f.state === 'hit') return (Math.floor(now / 90) % 2) ? 'hurt2' : 'hurt1';
   if (f.state === 'stunned') return 'hurt1';
   if (f.state === 'block') return 'block';
+  if (f.state === 'prejump') return 'crouch1'; // anticipación antes de saltar
   if (f.state === 'attack') {
     // cada golpe del combo son 2 frames: anticipación → impacto (al 50%)
     const sub = f.stateTimer > f.swingDuration * 0.5 ? 1 : 2;
@@ -83,9 +84,9 @@ function spritePoseFor(f) {
   }
   if (f.state === 'dash') return 'dash';
   if (!f.onGround) return f.vy < 0 ? 'jump1' : 'jump2'; // subiendo / cayendo
-  if (f.crouching) return (Math.floor(now / 280) % 2) ? 'crouch2' : 'crouch1';
-  if (f.vx !== 0) return 'walk' + (Math.floor(now / 130) % 6 + 1); // ciclo de 6
-  return 'idle' + (Math.floor(now / 280) % 4 + 1); // respiración de 4
+  if (f.crouching) return (Math.floor(now / 360) % 2) ? 'crouch2' : 'crouch1';
+  if (f.vx !== 0) return 'walk' + (Math.floor(now / 150) % 6 + 1); // ciclo de 6
+  return 'idle' + (Math.floor(now / 360) % 4 + 1); // respiración de 4
 }
 
 Sprites.loadAll();

@@ -4,7 +4,14 @@
 //  personaje (daño, velocidad, etc.) vienen de characters.js.
 // ============================================================
 
-const GRAVITY = 0.8;
+// Gravedad asimétrica estilo juego de lucha: subes flotando, caes con peso,
+// y "flotas" un instante en el punto más alto (apex hang) para que el salto
+// tenga sensación y control.
+const GRAVITY_RISE = 0.62;   // mientras subes (arco amplio)
+const GRAVITY_FALL = 0.95;   // al caer (más peso, caída más rápida)
+const APEX_VY = 2.4;         // |vy| por debajo del cual estás "en la cima"
+const APEX_FACTOR = 0.5;     // gravedad reducida en la cima (hang time)
+const PREJUMP_FRAMES = 4;    // anticipación agachado antes de despegar
 const DEFAULT_FLOOR_Y = 490;
 let FLOOR_Y = DEFAULT_FLOOR_Y; // cada escenario puede tener su línea de suelo
 const STAGE_LEFT = 50;
@@ -158,6 +165,22 @@ class Fighter {
 
     if (this.state === 'hit' || this.state === 'recover' || this.state === 'stunned') {
       if (--this.stateTimer <= 0) this.state = 'idle';
+    } else if (this.state === 'prejump') {
+      // breve anticipación agachado; al acabar, despega con el impulso
+      // horizontal según la dirección que estés manteniendo (salto
+      // adelante / neutro / atrás, como en los juegos de lucha clásicos)
+      this.vx = 0;
+      if (--this.stateTimer <= 0) {
+        const c = this.controls;
+        const rev = this.reversedTimer > 0;
+        const wantLeft = this.input.down(rev ? c.right : c.left);
+        const wantRight = this.input.down(rev ? c.left : c.right);
+        this.state = 'idle';
+        this.vy = -this.def.jumpPower;
+        this.vx = wantLeft ? -this.def.speed * 1.1 : wantRight ? this.def.speed * 1.1 : 0;
+        this.jumpsUsed = 1;
+        playSfx('jump', this.def.voice);
+      }
     } else if (this.state === 'block') {
       // puedes desplazarte (despacio) sin bajar la guardia
       const c = this.controls;
@@ -224,16 +247,20 @@ class Fighter {
 
     this.crouching = this.onGround && this.input.down(c.crouch);
     const speed = this.crouching ? this.def.speed * 0.5 : this.def.speed;
+    const wantLeft = this.input.down(leftKey);
+    const wantRight = this.input.down(rightKey);
 
-    this.vx = 0;
-    if (this.input.down(leftKey)) this.vx = -speed;
-    if (this.input.down(rightKey)) this.vx = speed;
-
-    // mirar hacia donde te mueves (si estás quieto, conservas la dirección)
-    if (this.vx > 0) this.facing = 1;
-    else if (this.vx < 0) this.facing = -1;
-
-    if (this.onGround) this.jumpsUsed = 0;
+    if (this.onGround) {
+      // en tierra: control total
+      this.vx = wantLeft ? -speed : wantRight ? speed : 0;
+      if (this.vx > 0) this.facing = 1;
+      else if (this.vx < 0) this.facing = -1;
+      this.jumpsUsed = 0;
+    } else {
+      // en el aire: el salto está comprometido; solo una leve deriva
+      const target = wantLeft ? -this.def.speed : wantRight ? this.def.speed : this.vx;
+      this.vx += (target - this.vx) * 0.06;
+    }
 
     // bloquear: mantén pulsado para cubrirte; los primeros frames son parry
     if (this.input.down(c.block) && this.onGround) {
@@ -246,11 +273,21 @@ class Fighter {
 
     const jumpPressed = this.input.pressed(c.jump) ||
       (c.jumpAlt && this.input.pressed(c.jumpAlt));
-    if (jumpPressed && this.jumpsUsed < MAX_JUMPS) {
-      this.vy = -this.def.jumpPower;
-      this.jumpsUsed++;
-      this.crouching = false;
-      playSfx('jump', this.def.voice);
+    if (jumpPressed) {
+      if (this.onGround) {
+        // salto en tierra: anticipación (el despegue ocurre al acabar el prejump)
+        this.state = 'prejump';
+        this.stateTimer = PREJUMP_FRAMES;
+        this.crouching = false;
+        this.vx = 0;
+        return;
+      } else if (this.jumpsUsed < MAX_JUMPS) {
+        // doble salto aéreo: instantáneo y permite redirigir el impulso
+        this.vy = -this.def.jumpPower * 0.92;
+        this.vx = wantLeft ? -this.def.speed * 1.1 : wantRight ? this.def.speed * 1.1 : this.vx;
+        this.jumpsUsed++;
+        playSfx('jump', this.def.voice);
+      }
     }
 
     if (this.input.pressed(c.dash) && this.dashCooldown <= 0) {
@@ -274,7 +311,7 @@ class Fighter {
       this.state = 'attack';
       // más largos para que la animación de cada golpe se aprecie;
       // los encadenados salen algo más rápido
-      this.swingDuration = this.comboStage > 0 ? 22 : 28;
+      this.swingDuration = this.comboStage > 0 ? 28 : 36;
       this.stateTimer = this.swingDuration;
       this.hitRegistered = false;
       this.vx = this.facing * 3; // pequeña embestida hacia delante
@@ -322,7 +359,10 @@ class Fighter {
   }
 
   applyPhysics() {
-    this.vy += GRAVITY;
+    // gravedad por fase: ligera al subir, fuerte al caer, mínima en la cima
+    let g = this.vy < 0 ? GRAVITY_RISE : GRAVITY_FALL;
+    if (Math.abs(this.vy) < APEX_VY) g *= APEX_FACTOR;
+    this.vy += g;
     this.x += this.vx;
     this.y += this.vy;
     if (this.y > FLOOR_Y) {
